@@ -1160,19 +1160,25 @@ body {
     flex-direction: column !important;
     page-break-inside: auto;
     break-inside: auto;
+    /* hidden だと子の改ページが欠けることがあるため visible のまま */
     overflow: visible !important;
     text-align: left !important;
   }
 
-  /* 問題同士の間隔（印刷エンジンでの flex 伸長は避ける） */
+  /* 画面用の flex:1 による伸長を印刷では無効化（子の高さに合わせる） */
   .questions-grid {
     gap: 2pt !important;
+    flex: none !important;
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+    min-height: 0 !important;
   }
 
   /* ── ⑥ 問題カード：改ページ制御 ── */
   .question-card {
-    page-break-inside: avoid;
     break-inside: avoid;
+    page-break-inside: avoid;
+    -webkit-column-break-inside: avoid;
     border: 1.5pt solid #dadce0 !important;
     padding: 5pt 7pt !important;
     margin-bottom: 0 !important;
@@ -1386,4 +1392,11 @@ body {
 .pdf-capturing .write-box::after,
 .pdf-capturing .hira-write::after {
   opacity: 1 !important;
+}
+
+/* savePDF() が組み立てる一時ページ（画面外DOM）。画面表示には使わない */
+.a4-sheet.pdf-export-surface {
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
 }

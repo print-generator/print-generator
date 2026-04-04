@@ -73,7 +73,8 @@ function printSheet() {
 }
 
 /* ════════════════════════════════════════
-   PDF 保存（html2canvas + jsPDF）完全版
+   PDF 保存（html2canvas + jsPDF）
+   question-card 単位でページ分割し、各ページを個別にキャプチャする
 ════════════════════════════════════════ */
 async function savePDF() {
   const sheet = document.getElementById('printSheet');
@@ -83,91 +84,171 @@ async function savePDF() {
     return;
   }
 
+  if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
+    alert('PDFライブラリの読み込みに失敗しました。\nページを再読み込みして再度お試しください。');
+    return;
+  }
+
+  const header = sheet.querySelector('.print-header');
+  const instr = sheet.querySelector('.print-instruction');
+  const footer = sheet.querySelector('.print-footer');
+  const grid = sheet.querySelector('.questions-grid');
+  const cards = Array.from(sheet.querySelectorAll('.question-card'));
+
+  if (!cards.length) {
+    alert('プリントに問題が含まれていません。');
+    return;
+  }
+
+  const host = document.createElement('div');
+  host.setAttribute('aria-hidden', 'true');
+  host.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;pointer-events:none;';
+
+  const cs = getComputedStyle(sheet);
+  const gridCs = grid ? getComputedStyle(grid) : null;
+
+  /** 1枚のPDFページに収められる最大の外寸（高さ）。css の .a4-sheet min-height:273mm と整合 */
+  function getMaxPageHeightPx() {
+    const d = document.createElement('div');
+    d.className = 'a4-sheet';
+    d.style.cssText = [
+      'position:absolute',
+      'left:-9999px',
+      'top:0',
+      `width:${sheet.offsetWidth}px`,
+      'height:273mm',
+      `box-sizing:${cs.boxSizing}`,
+      `padding:${cs.padding}`,
+      'margin:0',
+      'border:none',
+      'background:#fff',
+    ].join(';');
+    document.body.appendChild(d);
+    const h = d.offsetHeight;
+    document.body.removeChild(d);
+    return h;
+  }
+
+  /**
+   * 1ページ分のDOM（ヘッダー・説明は先頭ページのみ、フッターは最終ページのみ）
+   * @param {HTMLElement[]} slice — 当ページに載せる .question-card（クローン元）
+   * @param {boolean} isFirst — 先頭ページ
+   * @param {boolean} isLastPageOfDoc — 当ページに元ドキュメント最後のカードが含まれる（＝フッター付与）
+   */
+  function buildPageFragment(slice, isFirst, isLastPageOfDoc) {
+    const wrap = document.createElement('div');
+    wrap.className = `${sheet.className} pdf-export-surface pdf-capturing`.trim();
+    wrap.style.cssText = [
+      `width:${sheet.offsetWidth}px`,
+      `box-sizing:${cs.boxSizing}`,
+      `padding:${cs.padding}`,
+      'margin:0',
+      'background:#fff',
+      'display:flex',
+      'flex-direction:column',
+      'min-height:0',
+    ].join(';');
+
+    if (isFirst) {
+      if (header) wrap.appendChild(header.cloneNode(true));
+      if (instr) wrap.appendChild(instr.cloneNode(true));
+    }
+    const g = document.createElement('div');
+    g.className = grid ? grid.className : 'questions-grid';
+    if (gridCs) {
+      g.style.display = gridCs.display;
+      g.style.flexDirection = gridCs.flexDirection;
+      g.style.gap = gridCs.gap;
+      g.style.flex = 'none';
+    }
+    slice.forEach((c) => g.appendChild(c.cloneNode(true)));
+    wrap.appendChild(g);
+    if (isLastPageOfDoc && footer) wrap.appendChild(footer.cloneNode(true));
+    return wrap;
+  }
+
+  const maxPageH = getMaxPageHeightPx();
+  document.body.appendChild(host);
+
+  const pageSlices = [];
+  let idx = 0;
+
+  while (idx < cards.length) {
+    const isFirst = pageSlices.length === 0;
+    let lo = idx;
+    let hi = cards.length - 1;
+    let best = idx - 1;
+
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const slice = cards.slice(idx, mid + 1);
+      const isLastPageOfDoc = mid === cards.length - 1;
+      const frag = buildPageFragment(slice, isFirst, isLastPageOfDoc);
+      host.appendChild(frag);
+      const ok = frag.offsetHeight <= maxPageH;
+      host.removeChild(frag);
+      if (ok) {
+        best = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+
+    if (best < idx) best = idx;
+    pageSlices.push(cards.slice(idx, best + 1));
+    idx = best + 1;
+  }
+
   try {
     if (document.fonts && document.fonts.ready) {
       await document.fonts.ready;
     }
-
-    const scale = 3;
-
-    const canvas = await html2canvas(sheet, {
-      scale: scale,
-      useCORS: true,
-      backgroundColor: '#ffffff'
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
     });
 
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
-
-    /* css/style.css の @page { margin: 12mm } と同じ。ここがズレると PDF だけ印字位置が変わる */
-    const pageWidth = 210;
-    const pageHeight = 297;
     const marginMm = 12;
-
+    const pageWidth = 210;
     const usableWidth = pageWidth - marginMm * 2;
-    const usableHeight = pageHeight - marginMm * 2;
+    const PDF_SCALE = 3;
 
-    const pxPerMm = canvas.width / usableWidth;
-    const pageHeightPx = Math.floor(usableHeight * pxPerMm);
+    for (let p = 0; p < pageSlices.length; p++) {
+      const isFirst = p === 0;
+      const isLastPageOfDoc = p === pageSlices.length - 1;
+      const frag = buildPageFragment(pageSlices[p], isFirst, isLastPageOfDoc);
+      host.appendChild(frag);
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
 
-    let renderedHeight = 0;
-    let pageIndex = 0;
+      const canvas = await html2canvas(frag, {
+        scale: PDF_SCALE,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
 
-    while (renderedHeight < canvas.height) {
-      const remainingHeightPx = Math.min(
-        pageHeightPx,
-        canvas.height - renderedHeight
-      );
+      host.removeChild(frag);
 
-      const pageCanvas = document.createElement('canvas');
-      const ctx = pageCanvas.getContext('2d');
+      const pxPerMm = canvas.width / usableWidth;
+      const imgHeightMm = canvas.height / pxPerMm;
+      const img = canvas.toDataURL('image/png');
 
-      pageCanvas.width = canvas.width;
-      pageCanvas.height = remainingHeightPx;
-
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-
-      ctx.drawImage(
-        canvas,
-        0,
-        renderedHeight,
-        canvas.width,
-        remainingHeightPx,
-        0,
-        0,
-        canvas.width,
-        remainingHeightPx
-      );
-
-      const img = pageCanvas.toDataURL('image/png');
-      const imgHeightMm = remainingHeightPx / pxPerMm;
-
-      if (pageIndex > 0) {
-        pdf.addPage();
-      }
-
-      pdf.addImage(
-        img,
-        'PNG',
-        marginMm,
-        marginMm,
-        usableWidth,
-        imgHeightMm
-      );
-
-      renderedHeight += remainingHeightPx;
-      pageIndex++;
+      if (p > 0) pdf.addPage();
+      pdf.addImage(img, 'PNG', marginMm, marginMm, usableWidth, imgHeightMm);
     }
 
     const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
     const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
-    const fname = `プリント_${contentLabels[selectedContent]}_${levelLabels[selectedLevel]}_${dateStamp()}.pdf`;
-    pdf.save(fname);
-
+    pdf.save(`プリント_${contentLabels[selectedContent]}_${levelLabels[selectedLevel]}_${dateStamp()}.pdf`);
   } catch (e) {
     console.error('PDF保存エラー:', e);
     alert('PDFの生成に失敗しました。\nブラウザの印刷機能（Ctrl+P）→「PDFに保存」もお試しください。');
+  } finally {
+    host.remove();
   }
 }
 

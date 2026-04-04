@@ -107,6 +107,9 @@ async function savePDF() {
   const cs = getComputedStyle(sheet);
   const gridCs = grid ? getComputedStyle(grid) : null;
 
+  /** offsetHeight と html2canvas の描画高の差・Safari のレイアウト誤差を吸収（12〜20px の範囲） */
+  const PDF_PAGE_HEIGHT_SAFETY_PX = 16;
+
   /** 1枚のPDFページに収められる最大の外寸（高さ）。css の .a4-sheet min-height:273mm と整合 */
   function getMaxPageHeightPx() {
     const d = document.createElement('div');
@@ -146,7 +149,6 @@ async function savePDF() {
       'background:#fff',
       'display:flex',
       'flex-direction:column',
-      'min-height:0',
     ].join(';');
 
     if (isFirst) {
@@ -155,19 +157,21 @@ async function savePDF() {
     }
     const g = document.createElement('div');
     g.className = grid ? grid.className : 'questions-grid';
-    if (gridCs) {
-      g.style.display = gridCs.display;
-      g.style.flexDirection = gridCs.flexDirection;
-      g.style.gap = gridCs.gap;
-      g.style.flex = 'none';
-    }
+    g.style.display = 'flex';
+    g.style.flexDirection = 'column';
+    g.style.flex = 'none';
+    g.style.flexGrow = '0';
+    g.style.flexShrink = '0';
+    g.style.gap = gridCs ? gridCs.gap : '8px';
     slice.forEach((c) => g.appendChild(c.cloneNode(true)));
     wrap.appendChild(g);
+    /* 最終ページのみフッター（それ以外では絶対に付けない） */
     if (isLastPageOfDoc && footer) wrap.appendChild(footer.cloneNode(true));
     return wrap;
   }
 
   const maxPageH = getMaxPageHeightPx();
+  const maxPageContentHeightPx = maxPageH - PDF_PAGE_HEIGHT_SAFETY_PX;
   document.body.appendChild(host);
 
   const pageSlices = [];
@@ -185,7 +189,8 @@ async function savePDF() {
       const isLastPageOfDoc = mid === cards.length - 1;
       const frag = buildPageFragment(slice, isFirst, isLastPageOfDoc);
       host.appendChild(frag);
-      const ok = frag.offsetHeight <= maxPageH;
+      void frag.offsetHeight;
+      const ok = frag.offsetHeight <= maxPageContentHeightPx;
       host.removeChild(frag);
       if (ok) {
         best = mid;
@@ -220,6 +225,7 @@ async function savePDF() {
       const isLastPageOfDoc = p === pageSlices.length - 1;
       const frag = buildPageFragment(pageSlices[p], isFirst, isLastPageOfDoc);
       host.appendChild(frag);
+      void frag.offsetHeight;
       await new Promise((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(resolve));
       });

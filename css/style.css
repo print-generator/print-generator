@@ -1396,7 +1396,14 @@ body {
 
 /* savePDF() が組み立てる一時ページ（画面外DOM）。画面表示には使わない */
 .a4-sheet.pdf-export-surface {
-  min-height: 0;
-  max-height: none;
-  overflow: visible;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+.a4-sheet.pdf-export-surface .questions-grid {
+  flex: none !important;
+}
+.a4-sheet.pdf-export-surface .print-footer {
+  margin-top: 8px !important;
 }

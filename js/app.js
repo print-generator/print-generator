@@ -75,8 +75,6 @@ function printSheet() {
 /* ════════════════════════════════════════
    PDF 保存（html2canvas + jsPDF）完全版
 ════════════════════════════════════════ */
-async function savePDF() 
-
 async function savePDF() {
   const sheet = document.getElementById('printSheet');
 
@@ -161,12 +159,23 @@ async function savePDF() {
       pageIndex++;
     }
 
-    pdf.save(`print_${dateStamp()}.pdf`);
+    const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
+    const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
+    const fname = `プリント_${contentLabels[selectedContent]}_${levelLabels[selectedLevel]}_${dateStamp()}.pdf`;
+    pdf.save(fname);
 
   } catch (e) {
-    console.error(e);
-    alert('PDF失敗');
+    console.error('PDF保存エラー:', e);
+    alert('PDFの生成に失敗しました。\nブラウザの印刷機能（Ctrl+P）→「PDFに保存」もお試しください。');
   }
+}
+
+function dateStamp() {
+  const d  = new Date();
+  const yy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yy}${mm}${dd}`;
 }
 
 /* ════════════════════════════════════════

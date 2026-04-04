@@ -529,17 +529,22 @@ body {
 .btn-pdf { background: var(--danger-soft); color: #8b0000; border: 1px solid var(--danger); }
 .btn-pdf:hover { background: var(--danger); color: var(--white); }
 
-/* ── A4 ── */
+/* ── A4 ──
+   プレビュー寸法を @media print の印字域と一致させる（210−12×2 = 186mm 幅、297−12×2 = 273mm 高）。
+   html2canvas は screen のみ参照するため、ここを mm ベースにして印刷・PDFと同じレイアウトボックスにする。 */
 .a4-wrapper {
   display: flex; justify-content: center;
   background: #e8ecf0; border-radius: var(--radius);
   padding: 32px 20px; box-shadow: inset 0 2px 8px rgba(0,0,0,.1);
 }
 .a4-sheet {
-  width: 794px; min-height: 1123px;
+  width: 186mm;
+  max-width: 100%;
+  min-height: 273mm;
+  box-sizing: border-box;
   background: var(--white); border-radius: 4px;
   box-shadow: var(--shadow-lg);
-  padding: 28px 36px 36px;
+  padding: 5mm 6mm;
   font-family: var(--font);
   position: relative;
   display: flex; flex-direction: column;
@@ -950,7 +955,8 @@ body {
    レスポンシブ
    ============================================ */
 @media (max-width: 860px) {
-  .a4-sheet { width: 100%; min-height: auto; padding: 24px 20px 32px; }
+  /* 幅だけ狭いビューに追従。パディングは印刷・PDFと同じ 5mm 6mm のまま（キャプチャの一貫性） */
+  .a4-sheet { width: 100%; max-width: 186mm; min-height: auto; padding: 5mm 6mm; box-sizing: border-box; }
   .a4-wrapper { padding: 16px 8px; }
   .hiragana-grid { grid-template-columns: repeat(4,1fr); }
   .steps-grid { flex-direction: column; }
@@ -1158,11 +1164,9 @@ body {
     text-align: left !important;
   }
 
-  /* 問題同士の間隔（1ページ収めを優先） */
+  /* 問題同士の間隔（印刷エンジンでの flex 伸長は避ける） */
   .questions-grid {
     gap: 2pt !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
   }
 
   /* ── ⑥ 問題カード：改ページ制御 ── */

@@ -99,12 +99,13 @@ async function savePDF() {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
 
+    /* css/style.css の @page { margin: 12mm } と同じ。ここがズレると PDF だけ印字位置が変わる */
     const pageWidth = 210;
     const pageHeight = 297;
-    const margin = 8;
+    const marginMm = 12;
 
-    const usableWidth = pageWidth - margin * 2;
-    const usableHeight = pageHeight - margin * 2;
+    const usableWidth = pageWidth - marginMm * 2;
+    const usableHeight = pageHeight - marginMm * 2;
 
     const pxPerMm = canvas.width / usableWidth;
     const pageHeightPx = Math.floor(usableHeight * pxPerMm);
@@ -149,8 +150,8 @@ async function savePDF() {
       pdf.addImage(
         img,
         'PNG',
-        margin,
-        margin,
+        marginMm,
+        marginMm,
         usableWidth,
         imgHeightMm
       );

@@ -75,13 +75,95 @@ function printSheet() {
 /* ════════════════════════════════════════
    PDF 保存（html2canvas + jsPDF）完全版
 ════════════════════════════════════════ */
-async function savePDF() {
+async function savePDF() async function savePDF() {
   const sheet = document.getElementById('printSheet');
 
   if (!sheet || !sheet.innerHTML.trim()) {
     alert('まずプリントを生成してください。');
     return;
   }
+
+  try {
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+
+    const scale = 3;
+
+    const canvas = await html2canvas(sheet, {
+      scale: scale,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+    });
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const margin = 8;
+
+    const usableWidth = pageWidth - margin * 2;
+    const usableHeight = pageHeight - margin * 2;
+
+    const pxPerMm = canvas.width / usableWidth;
+    const pageHeightPx = Math.floor(usableHeight * pxPerMm);
+
+    let renderedHeight = 0;
+    let pageIndex = 0;
+
+    while (renderedHeight < canvas.height) {
+      const remainingHeightPx = Math.min(
+        pageHeightPx,
+        canvas.height - renderedHeight
+      );
+
+      const pageCanvas = document.createElement('canvas');
+      const ctx = pageCanvas.getContext('2d');
+
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = remainingHeightPx;
+
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+
+      ctx.drawImage(
+        canvas,
+        0,
+        renderedHeight,
+        canvas.width,
+        remainingHeightPx,
+        0,
+        0,
+        canvas.width,
+        remainingHeightPx
+      );
+
+      const img = pageCanvas.toDataURL('image/png');
+      const imgHeightMm = remainingHeightPx / pxPerMm;
+
+      if (pageIndex > 0) pdf.addPage();
+
+      pdf.addImage(
+        img,
+        'PNG',
+        margin,
+        margin,
+        usableWidth,
+        imgHeightMm
+      );
+
+      renderedHeight += remainingHeightPx;
+      pageIndex++;
+    }
+
+    pdf.save(`print_${dateStamp()}.pdf`);
+
+  } catch (e) {
+    console.error(e);
+    alert('PDF失敗');
+  }
+}
 
   try {
     const canvas = await html2canvas(sheet, {

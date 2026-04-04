@@ -75,7 +75,9 @@ function printSheet() {
 /* ════════════════════════════════════════
    PDF 保存（html2canvas + jsPDF）完全版
 ════════════════════════════════════════ */
-async function savePDF() async function savePDF() {
+async function savePDF() 
+
+async function savePDF() {
   const sheet = document.getElementById('printSheet');
 
   if (!sheet || !sheet.innerHTML.trim()) {
@@ -93,7 +95,7 @@ async function savePDF() async function savePDF() {
     const canvas = await html2canvas(sheet, {
       scale: scale,
       useCORS: true,
-      backgroundColor: '#ffffff',
+      backgroundColor: '#ffffff'
     });
 
     const { jsPDF } = window.jspdf;
@@ -142,7 +144,9 @@ async function savePDF() async function savePDF() {
       const img = pageCanvas.toDataURL('image/png');
       const imgHeightMm = remainingHeightPx / pxPerMm;
 
-      if (pageIndex > 0) pdf.addPage();
+      if (pageIndex > 0) {
+        pdf.addPage();
+      }
 
       pdf.addImage(
         img,
@@ -163,94 +167,6 @@ async function savePDF() async function savePDF() {
     console.error(e);
     alert('PDF失敗');
   }
-}
-
-  try {
-    const canvas = await html2canvas(sheet, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff'
-    });
-
-    const imgData = canvas.toDataURL('image/png');
-
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-
-    const pageWidth = 210;
-    const pageHeight = 297;
-    const margin = 10;
-
-    const usableWidth = pageWidth - margin * 2;
-    const imgHeight = canvas.height * usableWidth / canvas.width;
-
-    if (imgHeight <= pageHeight - margin * 2) {
-      pdf.addImage(imgData, 'PNG', margin, margin, usableWidth, imgHeight);
-    } else {
-      const fullCanvas = canvas;
-      const pageCanvas = document.createElement('canvas');
-      const pageCtx = pageCanvas.getContext('2d');
-
-      const pxPerMm = fullCanvas.width / usableWidth;
-      const pageHeightPx = Math.floor((pageHeight - margin * 2) * pxPerMm);
-
-      pageCanvas.width = fullCanvas.width;
-      pageCanvas.height = pageHeightPx;
-
-      let renderedHeight = 0;
-      let pageIndex = 0;
-
-      while (renderedHeight < fullCanvas.height) {
-        pageCtx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
-        pageCtx.fillStyle = '#ffffff';
-        pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-
-        pageCtx.drawImage(
-          fullCanvas,
-          0,
-          renderedHeight,
-          fullCanvas.width,
-          pageHeightPx,
-          0,
-          0,
-          fullCanvas.width,
-          pageHeightPx
-        );
-
-        const pageImgData = pageCanvas.toDataURL('image/png');
-        const pageImgHeightMm = pageCanvas.height / pxPerMm;
-
-        if (pageIndex > 0) {
-          pdf.addPage();
-        }
-
-        pdf.addImage(
-          pageImgData,
-          'PNG',
-          margin,
-          margin,
-          usableWidth,
-          pageImgHeightMm
-        );
-
-        renderedHeight += pageHeightPx;
-        pageIndex++;
-      }
-    }
-
-    pdf.save(`print_${dateStamp()}.pdf`);
-  } catch (error) {
-    console.error('PDF生成エラー:', error);
-    alert('PDFの生成に失敗しました。');
-  }
-}
-
-function dateStamp() {
-  const d  = new Date();
-  const yy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yy}${mm}${dd}`;
 }
 
 /* ════════════════════════════════════════

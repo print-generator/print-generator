@@ -1034,10 +1034,13 @@ body {
    ============================================ */
 @media print {
 
-  /* ごく薄い余白でプリンタ非印字域による 2 枚目先頭の欠けを防ぐ */
+  /*
+   * 用紙余白は @page のみで固定（10〜15mm）。コンテンツ幅は印刷領域いっぱいに合わせ、
+   * 画面用の 794px / max-width:210mm との二重指定でズレないようにする。
+   */
   @page {
     size: A4 portrait;
-    margin: 4mm;
+    margin: 12mm;
   }
 
   /* 背景色・枠線を可能な限りそのまま印刷 */
@@ -1046,9 +1049,17 @@ body {
   *::after {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    box-sizing: border-box;
   }
 
-  html, body {
+  html {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body {
     width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
@@ -1057,45 +1068,68 @@ body {
     padding: 0 !important;
     background: #fff !important;
     font-size: 10pt;
+    display: block !important;
   }
 
-  /* ヘッダー・操作パネル・ボタン等（visibility は使わない：子の表示が不安定になるため） */
+  /* ヘッダー・操作パネル・モーダル等 */
   .no-print {
+    display: none !important;
+  }
+
+  /* 誤って印刷されないよう UI 系を明示的に非表示（.no-print 漏れ対策） */
+  .site-header,
+  .hero-section,
+  .how-to-section,
+  .control-panel,
+  .generate-section,
+  .preview-controls,
+  .plan-cta-section,
+  .faq-section,
+  .site-footer,
+  .loading-overlay,
+  .modal-overlay {
     display: none !important;
   }
 
   .generator-section.section {
     padding: 0 !important;
+    margin: 0 !important;
     background: #fff !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .generator-section > .section-inner {
-    max-width: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
     padding: 0 !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
   }
 
   .print-target,
   .preview-section {
     display: block !important;
     visibility: visible !important;
-    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
     padding: 0 !important;
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
   }
 
-  /* 印刷時は .print-area（.a4-wrapper）だけがページいっぱいに見えるように */
+  /* @page 余白の内側いっぱい（物理210mm 固定はせず、印刷ボックス幅に一致） */
   .print-area,
   .a4-wrapper {
     display: flex !important;
-    justify-content: center !important;
-    align-items: flex-start !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
     width: 100% !important;
-    max-width: 210mm !important;
-    min-height: auto !important;
-    margin: 0 auto !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
     padding: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
@@ -1103,11 +1137,14 @@ body {
   }
 
   .a4-sheet {
+    /* 印刷可能幅いっぱい（@page の margin 内側）。固定 px は使わない */
     width: 100% !important;
     max-width: 100% !important;
-    min-height: auto !important;
-    padding: 6mm 9mm !important;
-    margin: 0 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    /* 用紙余白は @page に任せ、シート内は軽い内側余白のみ */
+    padding: 5mm 6mm !important;
+    margin: 0 auto !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     border: none !important;
@@ -1118,11 +1155,14 @@ body {
     page-break-inside: auto;
     break-inside: auto;
     overflow: visible !important;
+    text-align: left !important;
   }
 
-  /* 問題同士の間隔を詰めて枚数を抑える */
+  /* 問題同士の間隔（1ページ収めを優先） */
   .questions-grid {
-    gap: 3pt !important;
+    gap: 2pt !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
   }
 
   /* ── ⑥ 問題カード：改ページ制御 ── */
@@ -1242,6 +1282,7 @@ body {
 
   /* ── ⑫ プリントヘッダーの区切り線 ── */
   .print-header {
+    flex-shrink: 0 !important;
     border-bottom: 2pt solid #1a73e8 !important;
     margin-bottom: 2mm !important;
     padding-bottom: 2mm !important;

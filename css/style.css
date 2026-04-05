@@ -618,6 +618,12 @@ body {
   display: flex; justify-content: space-between; align-items: center; font-size: .72rem; color: #bbb;
 }
 
+/* generator.js が出力するページ単位ラッパー（.a4-sheet 直下に複数） */
+.print-page {
+  display: block;
+  width: 100%;
+}
+
 /* ── プリント問題内のコンパクト用クラス ── */
 .hira-group-label {
   font-size: .76rem;
@@ -1161,6 +1167,15 @@ body {
     /* hidden だと子の改ページが欠けることがあるため visible のまま */
     overflow: visible !important;
     text-align: left !important;
+  }
+
+  /* 明示的な改ページ（最終ページの後は余白ページを出さない） */
+  .print-page:not(:last-child) {
+    break-after: page;
+    page-break-after: always;
+  }
+  .print-page {
+    overflow: visible !important;
   }
 
   .questions-grid {

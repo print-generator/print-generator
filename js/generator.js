@@ -33,18 +33,63 @@ function today() {
 
 /* ─────────────────────────────────────────────
    プリントHTML全体を生成して返す
+   （print-page 単位で組み、ブラウザ印刷のカード途中改ページを避ける）
 ───────────────────────────────────────────── */
 function generatePrintHTML(content, level, count, showName, showDate) {
   const meta   = buildMeta(content, level);
   const header = buildPrintHeader(meta, showName, showDate);
   const instr  = buildInstruction(meta);
-  const body   = buildQuestionBody(content, level, count);
   const footer = `<div class="print-footer">
     <span>プリント自動生成アプリ｜特別支援学校向け</span>
     <span>${today()}</span>
   </div>`;
 
-  return `${header}${instr}${body}${footer}`;
+  const cardHtmls = buildQuestionBody(content, level, count);
+  const perPage   = getCardsPerPage(content, level);
+  const chunks    = chunkCardsForPrint(cardHtmls, perPage);
+
+  return wrapPrintPagesHtml(chunks, header, instr, footer);
+}
+
+/** 助詞・生活単語・中級以下は 3 問／ページ。上級・ひらがなは 2 問／ページ */
+function getCardsPerPage(content, level) {
+  if (content === 'hiragana') return 2;
+  if (level === 'advanced') return 2;
+  return 3;
+}
+
+/** question-card HTML の配列を固定サイズで分割 */
+function chunkCardsForPrint(cardHtmls, perPage) {
+  const pages = [];
+  for (let i = 0; i < cardHtmls.length; i += perPage) {
+    pages.push(cardHtmls.slice(i, i + perPage));
+  }
+  return pages;
+}
+
+/**
+ * ページごとに print-page でラップ。先頭のみ header+instruction、最終のみ footer
+ */
+function wrapPrintPagesHtml(chunks, header, instr, footer) {
+  return chunks
+    .map((chunk, i, arr) => {
+      const isFirst = i === 0;
+      const isLast  = i === arr.length - 1;
+      const cls = [
+        'print-page',
+        isFirst ? 'print-page--first' : '',
+        isLast ? 'print-page--last' : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+      let html = `<div class="${cls}">`;
+      if (isFirst) html += header + instr;
+      html += `<div class="questions-grid">${chunk.join('')}</div>`;
+      if (isLast) html += footer;
+      html += `</div>`;
+      return html;
+    })
+    .join('');
 }
 
 /* ── メタ情報 ── */
@@ -116,6 +161,7 @@ function buildInstruction(meta) {
 
 /* ─────────────────────────────────────────────
    問題本体ビルダー（コンテンツ×レベル）
+   戻り値: question-card の HTML 文字列の配列（順序は通し番号）
 ───────────────────────────────────────────── */
 function buildQuestionBody(content, level, count) {
   const builders = {
@@ -157,7 +203,7 @@ function buildJoshiBeginner(count) {
       </div>`;
     return questionCard(i + 1, traceHtml);
   });
-  return `<div class="questions-grid">${cards.join('')}</div>`;
+  return cards;
 }
 
 function buildJoshiIntermediate(count) {
@@ -174,7 +220,7 @@ function buildJoshiIntermediate(count) {
       </div>`;
     return questionCard(i + 1, inner);
   });
-  return `<div class="questions-grid">${cards.join('')}</div>`;
+  return cards;
 }
 
 function buildJoshiAdvanced(count) {
@@ -186,7 +232,7 @@ function buildJoshiAdvanced(count) {
       <div class="answer-line"></div>`;
     return questionCard(i + 1, inner);
   });
-  return `<div class="questions-grid">${cards.join('')}</div>`;
+  return cards;
 }
 
 /* ====================================================
@@ -206,7 +252,7 @@ function buildHiraganaBeginner(count) {
       <div class="hiragana-grid">${cellsHtml}</div>`;
     return questionCard(i + 1, inner);
   });
-  return `<div class="questions-grid">${cards.join('')}</div>`;
+  return cards;
 }
 
 function buildHiraganaIntermediate(count) {
@@ -225,7 +271,7 @@ function buildHiraganaIntermediate(count) {
       </div>`;
     return questionCard(i + 1, inner);
   });
-  return `<div class="questions-grid">${cards.join('')}</div>`;
+  return cards;
 }
 
 function buildHiraganaAdvanced(count) {
@@ -240,7 +286,7 @@ function buildHiraganaAdvanced(count) {
       <div class="adv-write-row">${boxes}</div>`;
     return questionCard(i + 1, inner);
   });
-  return `<div class="questions-grid">${cards.join('')}</div>`;
+  return cards;
 }
 
 /* ====================================================
@@ -266,7 +312,7 @@ function buildSeikatsuBeginner(count) {
       </div>`;
     return questionCard(i + 1, inner);
   });
-  return `<div class="questions-grid">${cards.join('')}</div>`;
+  return cards;
 }
 
 function buildSeikatsuIntermediate(count) {
@@ -286,7 +332,7 @@ function buildSeikatsuIntermediate(count) {
       </div>`;
     return questionCard(i + 1, inner);
   });
-  return `<div class="questions-grid">${cards.join('')}</div>`;
+  return cards;
 }
 
 function buildSeikatsuAdvanced(count) {
@@ -305,7 +351,7 @@ function buildSeikatsuAdvanced(count) {
       </div>`;
     return questionCard(i + 1, inner);
   });
-  return `<div class="questions-grid">${cards.join('')}</div>`;
+  return cards;
 }
 
 /* ── 共通：問題カード ── */

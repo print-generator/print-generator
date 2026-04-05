@@ -1804,7 +1804,7 @@ body.lp-pricing-page {
 }
 
 /* スマホ html2canvas→PDF のみ（savePdfViaHtml2Canvas 中に body に pdf-mobile-capture）。
-   ラスタ化で細線がにじむため枠・十字をやや太く。PC の @media print は変更しない。 */
+   十字線はラスタ化でにじむため無効化し、外枠＋白地のみ。PC の @media print は変更しない。 */
 body.pdf-mobile-capture .print-page {
   width: 186mm !important;
   min-width: 186mm !important;
@@ -1815,33 +1815,18 @@ body.pdf-mobile-capture .write-box,
 body.pdf-mobile-capture .write-box-tight,
 body.pdf-mobile-capture .hira-write {
   box-sizing: border-box !important;
-  border-width: 2.5px !important;
+  border-width: 2px !important;
   border-style: solid !important;
   border-color: #94a3b8 !important;
+  background: #ffffff !important;
   -webkit-print-color-adjust: exact !important;
   print-color-adjust: exact !important;
 }
 body.pdf-mobile-capture .write-box::after,
 body.pdf-mobile-capture .hira-write::after {
-  content: '' !important;
-  position: absolute !important;
-  inset: 0 !important;
-  opacity: 1 !important;
-  background:
-    linear-gradient(
-      to right,
-      transparent calc(50% - 1px),
-      #94a3b8 calc(50% - 1px),
-      #94a3b8 calc(50% + 1px),
-      transparent calc(50% + 1px)
-    ),
-    linear-gradient(
-      to bottom,
-      transparent calc(50% - 1px),
-      #94a3b8 calc(50% - 1px),
-      #94a3b8 calc(50% + 1px),
-      transparent calc(50% + 1px)
-    ) !important;
+  content: none !important;
+  display: none !important;
+  background: none !important;
 }
 
 /* savePDF() が組み立てる一時ページ（画面外DOM）。画面表示には使わない */

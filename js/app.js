@@ -338,7 +338,12 @@ async function savePdfViaHtml2Canvas() {
     const dpr = window.devicePixelRatio || 2;
     const scale = Math.min(3, Math.max(2.5, dpr * 1.1));
 
-    const pageEls = sheet.querySelectorAll('.print-page');
+    const cards = Array.from(sheet.querySelectorAll('.question-card'));
+    const perPage = getCardsPerPageForMobilePdf(contentSel, levelSel);
+    const pageSlices = [];
+    for (let i = 0; i < cards.length; i += perPage) {
+      pageSlices.push(cards.slice(i, i + perPage));
+    }
 
     const host = document.createElement('div');
     host.id = 'pdfTempCaptureHost';
@@ -363,23 +368,19 @@ async function savePdfViaHtml2Canvas() {
     document.body.appendChild(host);
 
     try {
-      const captureTargets = pageEls.length
-        ? Array.from(pageEls)
-        : [sheet];
-
-      for (let p = 0; p < captureTargets.length; p++) {
-        const src = captureTargets[p];
-        const clone = src.cloneNode(true);
-        clone.style.width = '186mm';
-        clone.style.minWidth = '186mm';
-        clone.style.maxWidth = 'none';
-        clone.style.boxSizing = 'border-box';
-        host.appendChild(clone);
-        void clone.offsetHeight;
+      for (let p = 0; p < pageSlices.length; p++) {
+        const frag = buildMobilePdfSheetFragment(
+          sheet,
+          pageSlices[p],
+          p === 0,
+          p === pageSlices.length - 1
+        );
+        host.appendChild(frag);
+        void frag.offsetHeight;
         await waitForPaintPdf();
         await sleepPdf(50);
 
-        const canvas = await html2canvas(clone, {
+        const canvas = await html2canvas(frag, {
           scale,
           useCORS: true,
           backgroundColor: '#ffffff',
@@ -389,7 +390,7 @@ async function savePdfViaHtml2Canvas() {
           imageTimeout: 20000,
         });
 
-        host.removeChild(clone);
+        host.removeChild(frag);
 
         if (!canvas || canvas.width < 2 || canvas.height < 2) {
           throw new Error('empty canvas');
@@ -436,114 +437,65 @@ function addCanvasPageToPdf(pdf, canvas, sideMarginMm, contentWidthMm, addPageBe
   pdf.addImage(img, 'PNG', sideMarginMm, sideMarginMm, contentWidthMm, imgHeightMm);
 }
 
-/** 万一 .print-page キャプチャが失敗したとき用（旧ロジック・非表示DOMは最後の手段） */
-async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) {
+/**
+ * スマホPDF用：既存プリントから question-card を複製し、186mm 幅の 1 ページ相当 DOM を組み立てる。
+ * PC 印刷の .print-page 分割とは独立（getCardsPerPageForMobilePdf に合わせた枚数）。
+ */
+function buildMobilePdfSheetFragment(sheet, cardSlice, isFirst, isLastPageOfDoc) {
   const header = sheet.querySelector('.print-header');
   const instr = sheet.querySelector('.print-instruction');
   const footer = sheet.querySelector('.print-footer');
   const grid = sheet.querySelector('.questions-grid');
+  const cs = getComputedStyle(sheet);
+  const gridCs = grid ? getComputedStyle(grid) : null;
+
+  const wrap = document.createElement('div');
+  wrap.className = `${sheet.className} pdf-export-surface pdf-capturing`.trim();
+  wrap.style.cssText = [
+    'width:186mm',
+    'min-width:186mm',
+    'max-width:none',
+    `box-sizing:${cs.boxSizing}`,
+    `padding:${cs.padding}`,
+    'margin:0',
+    'background:#fff',
+    'display:flex',
+    'flex-direction:column',
+    'visibility:visible',
+  ].join(';');
+
+  if (isFirst) {
+    if (header) wrap.appendChild(header.cloneNode(true));
+    if (instr) wrap.appendChild(instr.cloneNode(true));
+  }
+  const g = document.createElement('div');
+  g.className = grid ? grid.className : 'questions-grid';
+  g.style.display = 'flex';
+  g.style.flexDirection = 'column';
+  g.style.flex = 'none';
+  g.style.gap = gridCs ? gridCs.gap : '8px';
+  cardSlice.forEach((c) => g.appendChild(c.cloneNode(true)));
+  wrap.appendChild(g);
+  if (isLastPageOfDoc && footer) wrap.appendChild(footer.cloneNode(true));
+  return wrap;
+}
+
+/** 万一 .print-page キャプチャが失敗したとき用（非表示DOM・同じ分割ルール） */
+async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) {
   const cards = Array.from(sheet.querySelectorAll('.question-card'));
+  const perPage = getCardsPerPageForMobilePdf(contentSel, levelSel);
+  const pageSlices = [];
+  for (let i = 0; i < cards.length; i += perPage) {
+    pageSlices.push(cards.slice(i, i + perPage));
+  }
 
   const host = document.createElement('div');
   host.setAttribute('aria-hidden', 'true');
   host.style.cssText =
     'position:fixed;left:-9999px;top:0;width:186mm;min-width:186mm;max-width:none;margin:0;pointer-events:none;z-index:-1;opacity:1;visibility:visible;overflow:visible;';
 
-  const cs = getComputedStyle(sheet);
-  const gridCs = grid ? getComputedStyle(grid) : null;
-  const PDF_PAGE_HEIGHT_SAFETY_PX = 24;
-
-  function getMaxPageHeightPx() {
-    const d = document.createElement('div');
-    d.className = 'a4-sheet';
-    d.style.cssText = [
-      'position:absolute',
-      'left:-9999px',
-      'top:0',
-      'width:186mm',
-      'min-width:186mm',
-      'max-width:none',
-      'height:273mm',
-      `box-sizing:${cs.boxSizing}`,
-      `padding:${cs.padding}`,
-      'margin:0',
-      'border:none',
-      'background:#fff',
-      'visibility:visible',
-    ].join(';');
-    document.body.appendChild(d);
-    const h = d.offsetHeight;
-    document.body.removeChild(d);
-    return h;
-  }
-
-  function buildPageFragment(slice, isFirst, isLastPageOfDoc) {
-    const wrap = document.createElement('div');
-    wrap.className = `${sheet.className} pdf-export-surface pdf-capturing`.trim();
-    wrap.style.cssText = [
-      'width:186mm',
-      'min-width:186mm',
-      'max-width:none',
-      `box-sizing:${cs.boxSizing}`,
-      `padding:${cs.padding}`,
-      'margin:0',
-      'background:#fff',
-      'display:flex',
-      'flex-direction:column',
-      'visibility:visible',
-    ].join(';');
-
-    if (isFirst) {
-      if (header) wrap.appendChild(header.cloneNode(true));
-      if (instr) wrap.appendChild(instr.cloneNode(true));
-    }
-    const g = document.createElement('div');
-    g.className = grid ? grid.className : 'questions-grid';
-    g.style.display = 'flex';
-    g.style.flexDirection = 'column';
-    g.style.flex = 'none';
-    g.style.gap = gridCs ? gridCs.gap : '8px';
-    slice.forEach((c) => g.appendChild(c.cloneNode(true)));
-    wrap.appendChild(g);
-    if (isLastPageOfDoc && footer) wrap.appendChild(footer.cloneNode(true));
-    return wrap;
-  }
-
-  const maxPageH = getMaxPageHeightPx();
-  const maxPageContentHeightPx = maxPageH - PDF_PAGE_HEIGHT_SAFETY_PX;
   document.body.classList.add('pdf-mobile-capture');
   document.body.appendChild(host);
-
-  const pageSlices = [];
-  let idx = 0;
-
-  while (idx < cards.length) {
-    const isFirst = pageSlices.length === 0;
-    let lo = idx;
-    let hi = cards.length - 1;
-    let best = idx - 1;
-
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      const slice = cards.slice(idx, mid + 1);
-      const isLastPageOfDoc = mid === cards.length - 1;
-      const frag = buildPageFragment(slice, isFirst, isLastPageOfDoc);
-      host.appendChild(frag);
-      void frag.offsetHeight;
-      const ok = frag.offsetHeight <= maxPageContentHeightPx;
-      host.removeChild(frag);
-      if (ok) {
-        best = mid;
-        lo = mid + 1;
-      } else {
-        hi = mid - 1;
-      }
-    }
-
-    if (best < idx) best = idx;
-    pageSlices.push(cards.slice(idx, best + 1));
-    idx = best + 1;
-  }
 
   try {
     if (document.fonts && document.fonts.ready) {
@@ -559,7 +511,7 @@ async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) 
     for (let p = 0; p < pageSlices.length; p++) {
       const isFirst = p === 0;
       const isLastPageOfDoc = p === pageSlices.length - 1;
-      const frag = buildPageFragment(pageSlices[p], isFirst, isLastPageOfDoc);
+      const frag = buildMobilePdfSheetFragment(sheet, pageSlices[p], isFirst, isLastPageOfDoc);
       host.appendChild(frag);
       void frag.offsetHeight;
       await waitForPaintPdf();

@@ -69,6 +69,20 @@ function getCardsPerPage(content, level) {
   return 6;
 }
 
+/**
+ * スマホ html2canvas→PDF 専用の 1 ページあたり問題数（切れない・見やすさ優先）。
+ * PC 印刷の getCardsPerPage とは別。助詞・生活 初級/中級 4、上級 3。ひらがなは 3〜4。
+ */
+function getCardsPerPageForMobilePdf(content, level) {
+  if (content === 'joshi' || content === 'seikatsu') {
+    return level === 'advanced' ? 3 : 4;
+  }
+  if (content === 'hiragana') {
+    return level === 'beginner' ? 4 : 3;
+  }
+  return 4;
+}
+
 /** question-card HTML の配列を固定サイズで分割 */
 function chunkCardsForPrint(cardHtmls, perPage) {
   const pages = [];

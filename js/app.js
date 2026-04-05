@@ -300,9 +300,13 @@ async function waitForPaintPdf() {
   await sleepPdf(50);
 }
 
+/** .a4-sheet と同じ印字幅（210mm − @page 左右余白 12mm×2） */
+const MOBILE_PDF_CONTENT_WIDTH_MM = 186;
+const MOBILE_PDF_SIDE_MARGIN_MM = 12;
+
 /**
  * スマホ向け：.print-page を cloneNode し、body 直下の可視一時コンテナ内で html2canvas。
- * （スクロール直後の要素・画面外DOMの直接キャプチャは Safari で白紙になりやすいため使わない）
+ * 一時コンテナは 186mm 固定（スマホ viewport に引っ張られない）。
  */
 async function savePdfViaHtml2Canvas() {
   const sheet = document.getElementById('printSheet');
@@ -331,11 +335,9 @@ async function savePdfViaHtml2Canvas() {
 
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
-    const marginMm = 12;
-    const usableWidth = 210 - marginMm * 2;
-    const scale = Math.min(2.25, Math.max(1.5, (window.devicePixelRatio || 2)));
+    const dpr = window.devicePixelRatio || 2;
+    const scale = Math.min(3, Math.max(2.5, dpr * 1.1));
 
-    const sheetW = Math.max(sheet.offsetWidth || 0, sheet.scrollWidth || 0, 320);
     const pageEls = sheet.querySelectorAll('.print-page');
 
     const host = document.createElement('div');
@@ -352,9 +354,12 @@ async function savePdfViaHtml2Canvas() {
       'background:#ffffff',
       'box-sizing:border-box',
       'overflow:hidden',
-      `width:${sheetW}px`,
-      'max-width:100vw',
+      'width:186mm',
+      'min-width:186mm',
+      'max-width:none',
     ].join(';');
+
+    document.body.classList.add('pdf-mobile-capture');
     document.body.appendChild(host);
 
     try {
@@ -365,9 +370,10 @@ async function savePdfViaHtml2Canvas() {
       for (let p = 0; p < captureTargets.length; p++) {
         const src = captureTargets[p];
         const clone = src.cloneNode(true);
-        clone.style.width = `${sheetW}px`;
+        clone.style.width = '186mm';
+        clone.style.minWidth = '186mm';
+        clone.style.maxWidth = 'none';
         clone.style.boxSizing = 'border-box';
-        clone.style.maxWidth = '100%';
         host.appendChild(clone);
         void clone.offsetHeight;
         await waitForPaintPdf();
@@ -380,6 +386,7 @@ async function savePdfViaHtml2Canvas() {
           logging: false,
           foreignObjectRendering: false,
           allowTaint: false,
+          imageTimeout: 20000,
         });
 
         host.removeChild(clone);
@@ -387,7 +394,13 @@ async function savePdfViaHtml2Canvas() {
         if (!canvas || canvas.width < 2 || canvas.height < 2) {
           throw new Error('empty canvas');
         }
-        addCanvasPageToPdf(pdf, canvas, marginMm, usableWidth, p > 0);
+        addCanvasPageToPdf(
+          pdf,
+          canvas,
+          MOBILE_PDF_SIDE_MARGIN_MM,
+          MOBILE_PDF_CONTENT_WIDTH_MM,
+          p > 0
+        );
       }
 
       const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
@@ -396,6 +409,7 @@ async function savePdfViaHtml2Canvas() {
         `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`
       );
     } finally {
+      document.body.classList.remove('pdf-mobile-capture');
       host.remove();
     }
   } catch (e) {
@@ -409,12 +423,17 @@ async function savePdfViaHtml2Canvas() {
   }
 }
 
-function addCanvasPageToPdf(pdf, canvas, marginMm, usableWidth, addPageBefore) {
-  const pxPerMm = canvas.width / usableWidth;
+/**
+ * 画像を A4 に貼る。canvas は幅 MOBILE_PDF_CONTENT_WIDTH_MM mm 分のコンテンツとして扱う。
+ * @param {number} sideMarginMm 左右余白（210 = 2*sideMargin + contentWidth となるよう揃える）
+ * @param {number} contentWidthMm 印字域の幅（mm）— クローン幅と一致させる
+ */
+function addCanvasPageToPdf(pdf, canvas, sideMarginMm, contentWidthMm, addPageBefore) {
+  const pxPerMm = canvas.width / contentWidthMm;
   const imgHeightMm = canvas.height / pxPerMm;
-  const img = canvas.toDataURL('image/png', 0.92);
+  const img = canvas.toDataURL('image/png');
   if (addPageBefore) pdf.addPage();
-  pdf.addImage(img, 'PNG', marginMm, marginMm, usableWidth, imgHeightMm);
+  pdf.addImage(img, 'PNG', sideMarginMm, sideMarginMm, contentWidthMm, imgHeightMm);
 }
 
 /** 万一 .print-page キャプチャが失敗したとき用（旧ロジック・非表示DOMは最後の手段） */
@@ -428,12 +447,11 @@ async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) 
   const host = document.createElement('div');
   host.setAttribute('aria-hidden', 'true');
   host.style.cssText =
-    'position:fixed;left:-9999px;top:0;width:186mm;max-width:100%;margin:0;pointer-events:none;z-index:-1;opacity:1;visibility:visible;overflow:visible;';
+    'position:fixed;left:-9999px;top:0;width:186mm;min-width:186mm;max-width:none;margin:0;pointer-events:none;z-index:-1;opacity:1;visibility:visible;overflow:visible;';
 
   const cs = getComputedStyle(sheet);
   const gridCs = grid ? getComputedStyle(grid) : null;
   const PDF_PAGE_HEIGHT_SAFETY_PX = 24;
-  const sheetW = Math.max(sheet.offsetWidth, sheet.scrollWidth, 320);
 
   function getMaxPageHeightPx() {
     const d = document.createElement('div');
@@ -442,7 +460,9 @@ async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) 
       'position:absolute',
       'left:-9999px',
       'top:0',
-      `width:${sheetW}px`,
+      'width:186mm',
+      'min-width:186mm',
+      'max-width:none',
       'height:273mm',
       `box-sizing:${cs.boxSizing}`,
       `padding:${cs.padding}`,
@@ -461,7 +481,9 @@ async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) 
     const wrap = document.createElement('div');
     wrap.className = `${sheet.className} pdf-export-surface pdf-capturing`.trim();
     wrap.style.cssText = [
-      `width:${sheetW}px`,
+      'width:186mm',
+      'min-width:186mm',
+      'max-width:none',
       `box-sizing:${cs.boxSizing}`,
       `padding:${cs.padding}`,
       'margin:0',
@@ -489,6 +511,7 @@ async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) 
 
   const maxPageH = getMaxPageHeightPx();
   const maxPageContentHeightPx = maxPageH - PDF_PAGE_HEIGHT_SAFETY_PX;
+  document.body.classList.add('pdf-mobile-capture');
   document.body.appendChild(host);
 
   const pageSlices = [];
@@ -522,55 +545,59 @@ async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) 
     idx = best + 1;
   }
 
-  if (document.fonts && document.fonts.ready) {
-    await document.fonts.ready;
-  }
-  await waitForPaintPdf();
-
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const marginMm = 12;
-  const pageWidth = 210;
-  const usableWidth = pageWidth - marginMm * 2;
-  const PDF_SCALE = 2;
-
-  for (let p = 0; p < pageSlices.length; p++) {
-    const isFirst = p === 0;
-    const isLastPageOfDoc = p === pageSlices.length - 1;
-    const frag = buildPageFragment(pageSlices[p], isFirst, isLastPageOfDoc);
-    host.appendChild(frag);
-    void frag.offsetHeight;
+  try {
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
     await waitForPaintPdf();
 
-    const canvas = await html2canvas(frag, {
-      scale: PDF_SCALE,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      foreignObjectRendering: false,
-    });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const dpr = window.devicePixelRatio || 2;
+    const pdfScale = Math.min(3, Math.max(2.5, dpr * 1.1));
 
-    host.removeChild(frag);
+    for (let p = 0; p < pageSlices.length; p++) {
+      const isFirst = p === 0;
+      const isLastPageOfDoc = p === pageSlices.length - 1;
+      const frag = buildPageFragment(pageSlices[p], isFirst, isLastPageOfDoc);
+      host.appendChild(frag);
+      void frag.offsetHeight;
+      await waitForPaintPdf();
 
-    if (!canvas || canvas.width < 2) {
-      host.remove();
-      throw new Error('blank canvas');
+      const canvas = await html2canvas(frag, {
+        scale: pdfScale,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        foreignObjectRendering: false,
+        allowTaint: false,
+        imageTimeout: 20000,
+      });
+
+      host.removeChild(frag);
+
+      if (!canvas || canvas.width < 2) {
+        throw new Error('blank canvas');
+      }
+
+      addCanvasPageToPdf(
+        pdf,
+        canvas,
+        MOBILE_PDF_SIDE_MARGIN_MM,
+        MOBILE_PDF_CONTENT_WIDTH_MM,
+        p > 0
+      );
     }
 
-    const pxPerMm = canvas.width / usableWidth;
-    const imgHeightMm = canvas.height / pxPerMm;
-    const img = canvas.toDataURL('image/png');
-    if (p > 0) pdf.addPage();
-    pdf.addImage(img, 'PNG', marginMm, marginMm, usableWidth, imgHeightMm);
+    const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
+    const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
+    pdf.save(
+      `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`
+    );
+  } finally {
+    document.body.classList.remove('pdf-mobile-capture');
+    host.remove();
   }
-
-  host.remove();
-
-  const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
-  const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
-  pdf.save(
-    `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`
-  );
 }
 
 function dateStamp() {

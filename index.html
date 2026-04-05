@@ -22,9 +22,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" />
 
-  <!-- ===== ライブラリ（画像 PDF 復帰時はコメント解除。現状は印刷ダイアログ経由の PDF 保存のみ） ===== -->
-  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script> -->
-  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script> -->
+  <!-- ===== ライブラリ（スマホ PDF は html2canvas + jsPDF。PC の PDF 保存は印刷ダイアログ） ===== -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <!-- JSON-LD 構造化データ -->
   <script type="application/ld+json">
@@ -286,6 +286,15 @@
             </select>
           </div>
         </div>
+        <div class="settings-row settings-row--custom">
+          <div class="setting-item setting-item--full">
+            <label for="customWord" class="setting-label">
+              <i class="fas fa-pen"></i> カスタム単語（有料）
+            </label>
+            <input type="text" id="customWord" class="setting-input" maxlength="15" autocomplete="off" placeholder="例：れんしゅう" disabled aria-describedby="customWordHint" />
+            <p class="setting-hint" id="customWordHint">有料プランで利用できます（生活単語・最大15文字）。</p>
+          </div>
+        </div>
       </div>
 
       <!-- 生成ボタン -->
@@ -295,7 +304,7 @@
           <span>プリントを生成する</span>
         </button>
         <p class="generate-note">
-          <i class="fas fa-lock"></i> 有料プランではさらに多くの教科・問題数・カスタマイズが使えます
+          <i class="fas fa-lock"></i> 有料で最大50問・上級・カスタム単語が使えます
           <button class="link-btn" onclick="openPlanModal()">詳細を見る →</button>
         </p>
       </div>
@@ -331,7 +340,7 @@
     <div class="plan-cta-left">
       <span class="plan-cta-badge"><i class="fas fa-crown"></i> PRO PLAN</span>
       <h2 class="plan-cta-title">もっとできることを増やしませんか？</h2>
-      <p class="plan-cta-desc">有料プランでは漢字・計算・カスタム単語など30種以上の教科に対応。クラス管理や解答付きプリントも使えます。</p>
+      <p class="plan-cta-desc">有料プランでは最大50問・上級レベル・カスタム単語（15文字まで）が使えます。</p>
     </div>
     <div class="plan-cta-right">
       <button class="plan-cta-btn" onclick="openPlanModal()">
@@ -357,7 +366,7 @@
           <i class="fas fa-chevron-down faq-arrow"></i>
         </button>
         <div class="faq-a">
-          はい、基本機能はすべて<strong>完全無料</strong>でご利用いただけます。登録やログインも不要です。有料プランではさらに多くの教科・機能をお使いいただけます。
+          はい、基本機能はすべて<strong>完全無料</strong>でご利用いただけます。登録やログインも不要です。有料プランでは問題数の拡大・上級レベル・カスタム単語などがお使いいただけます。
         </div>
       </div>
 
@@ -397,7 +406,7 @@
           <i class="fas fa-chevron-down faq-arrow"></i>
         </button>
         <div class="faq-a">
-          現在の無料プランでは「助詞」「ひらがな」「生活単語」の3種類に対応しています。有料プランでは漢字・計算・数字・カタカナ・カスタム単語など30種以上の教科をご利用いただけます。
+          「助詞」「ひらがな」「生活単語」の3種類に対応しています。有料プランでは最大50問・上級レベル・カスタム単語登録がご利用いただけます。
         </div>
       </div>
 
@@ -417,7 +426,7 @@
           <i class="fas fa-chevron-down faq-arrow"></i>
         </button>
         <div class="faq-a">
-          有料プランでは①教科30種以上②解答付きプリント生成③クラス・生徒管理④問題のカスタマイズ登録⑤広告非表示⑥優先サポートなどが利用できます。詳しくは「有料プランを見る」ボタンからご確認ください。
+          有料プランでは①最大50問②上級レベル③カスタム単語登録（最大15文字）などがご利用いただけます。詳しくは「有料プランを見る」ボタンからご確認ください。
         </div>
       </div>
 
@@ -468,7 +477,7 @@
 
     <!-- モーダル本体（スクロール可能） -->
     <div class="modal-body">
-      <p class="modal-intro">無料プランをさらにパワーアップ。家庭学習の準備をもっとラクに。</p>
+      <p class="modal-intro">無料と有料の違いを、シンプルにまとめました。</p>
 
       <!-- プランカード -->
       <div class="plan-cards">
@@ -479,16 +488,9 @@
             <div class="plan-price">¥<span>0</span><small>/月</small></div>
           </div>
           <ul class="plan-features">
-            <li class="ok"><i class="fas fa-check"></i> 教科3種（助詞・ひらがな・生活単語）</li>
-            <li class="ok"><i class="fas fa-check"></i> レベル3段階</li>
-            <li class="ok"><i class="fas fa-check"></i> 問題数 最大10問</li>
-            <li class="ok"><i class="fas fa-check"></i> 印刷・PDF保存</li>
-            <li class="ok"><i class="fas fa-check"></i> ランダム生成</li>
-            <li class="ng"><i class="fas fa-times"></i> 教科の追加（漢字・計算など）</li>
-            <li class="ng"><i class="fas fa-times"></i> 解答付きプリント</li>
-            <li class="ng"><i class="fas fa-times"></i> カスタム単語登録</li>
-            <li class="ng"><i class="fas fa-times"></i> クラス・生徒管理</li>
-            <li class="ng"><i class="fas fa-times"></i> 広告非表示</li>
+            <li class="ok"><i class="fas fa-check"></i> 問題数：最大10問</li>
+            <li class="ok"><i class="fas fa-check"></i> レベル：初級〜中級</li>
+            <li class="ok"><i class="fas fa-check"></i> 基本プリント生成（助詞・ひらがな・生活単語）</li>
           </ul>
           <button class="plan-btn plan-btn-current" disabled>現在のプラン</button>
         </div>
@@ -496,19 +498,15 @@
         <div class="plan-card plan-pro">
           <div class="plan-popular-badge">⭐ おすすめ</div>
           <div class="plan-card-header">
-            <h3 class="plan-name">プロプラン</h3>
+            <h3 class="plan-name">有料プラン</h3>
             <div class="plan-price">¥<span>980</span><small>/月</small></div>
             <p class="plan-trial">30日間無料トライアルあり</p>
           </div>
+          <p class="plan-pro-tagline">家庭学習にちょうどいいボリュームで作れます</p>
           <ul class="plan-features">
-            <li class="ok"><i class="fas fa-check"></i> 無料プランの全機能</li>
-            <li class="ok"><i class="fas fa-check"></i> 教科30種以上（漢字・計算・カタカナ など）</li>
-            <li class="ok"><i class="fas fa-check"></i> 解答付きプリント生成</li>
-            <li class="ok"><i class="fas fa-check"></i> カスタム単語登録（無制限）</li>
-            <li class="ok"><i class="fas fa-check"></i> クラス・生徒管理機能</li>
-            <li class="ok"><i class="fas fa-check"></i> 問題数 最大50問</li>
-            <li class="ok"><i class="fas fa-check"></i> 広告非表示</li>
-            <li class="ok"><i class="fas fa-check"></i> 優先メールサポート</li>
+            <li class="ok"><i class="fas fa-check"></i> 問題数：最大50問</li>
+            <li class="ok"><i class="fas fa-check"></i> 上級レベル解放</li>
+            <li class="ok"><i class="fas fa-check"></i> カスタム単語登録（最大15文字）</li>
           </ul>
           <button class="plan-btn plan-btn-pro" onclick="goPro()">
             <i class="fas fa-crown"></i> 30日間無料で試す
@@ -517,7 +515,7 @@
 
       </div><!-- /plan-cards -->
 
-      <p class="modal-note">※ 有料プランは現在準備中です。リリース時にお知らせします。</p>
+      <p class="modal-note">※ お申し込みは LINE からご案内します（仮）。</p>
     </div><!-- /modal-body -->
 
     <!-- モーダルフッター（固定） -->

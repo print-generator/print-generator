@@ -35,7 +35,7 @@ function today() {
    プリントHTML全体を生成して返す
    （print-page 単位で組み、ブラウザ印刷のカード途中改ページを避ける）
 ───────────────────────────────────────────── */
-function generatePrintHTML(content, level, count, showName, showDate) {
+function generatePrintHTML(content, level, count, showName, showDate, customWord) {
   const meta   = buildMeta(content, level);
   const header = buildPrintHeader(meta, showName, showDate);
   const instr  = buildInstruction(meta);
@@ -44,7 +44,7 @@ function generatePrintHTML(content, level, count, showName, showDate) {
     <span>${today()}</span>
   </div>`;
 
-  const cardHtmls = buildQuestionBody(content, level, count);
+  const cardHtmls = buildQuestionBody(content, level, count, customWord);
   const perPage   = getCardsPerPage(content, level);
   const chunks    = chunkCardsForPrint(cardHtmls, perPage);
 
@@ -178,7 +178,10 @@ function buildInstruction(meta) {
    問題本体ビルダー（コンテンツ×レベル）
    戻り値: question-card の HTML 文字列の配列（順序は通し番号）
 ───────────────────────────────────────────── */
-function buildQuestionBody(content, level, count) {
+function buildQuestionBody(content, level, count, customWord) {
+  const cw = typeof customWord === 'string' && customWord.trim()
+    ? customWord.trim().slice(0, 15)
+    : '';
   const builders = {
     joshi: {
       beginner:     buildJoshiBeginner,
@@ -196,14 +199,14 @@ function buildQuestionBody(content, level, count) {
       advanced:     buildSeikatsuAdvanced,
     },
   };
-  return builders[content][level](count);
+  return builders[content][level](count, content === 'seikatsu' ? cw : '');
 }
 
 /* ====================================================
    助詞
    ==================================================== */
 
-function buildJoshiBeginner(count) {
+function buildJoshiBeginner(count, _cw) {
   const data  = pickRandom(APP_DATA.joshi.beginner, count);
   const cards = data.map((q, i) => {
     const traceHtml = `
@@ -221,7 +224,7 @@ function buildJoshiBeginner(count) {
   return cards;
 }
 
-function buildJoshiIntermediate(count) {
+function buildJoshiIntermediate(count, _cw) {
   const data  = pickRandom(APP_DATA.joshi.intermediate, count);
   const cards = data.map((q, i) => {
     const choicesHtml = q.choices.map(c =>
@@ -238,7 +241,7 @@ function buildJoshiIntermediate(count) {
   return cards;
 }
 
-function buildJoshiAdvanced(count) {
+function buildJoshiAdvanced(count, _cw) {
   const data  = pickRandomAllowRepeat(APP_DATA.joshi.advanced, count);
   const cards = data.map((q, i) => {
     const inner = `
@@ -254,7 +257,7 @@ function buildJoshiAdvanced(count) {
    ひらがな
    ==================================================== */
 
-function buildHiraganaBeginner(count) {
+function buildHiraganaBeginner(count, _cw) {
   const sets = pickRandomAllowRepeat(APP_DATA.hiragana.beginner_sets, count);
   const cards = sets.map((set, i) => {
     const cellsHtml = set.chars.map(c => `
@@ -270,7 +273,7 @@ function buildHiraganaBeginner(count) {
   return cards;
 }
 
-function buildHiraganaIntermediate(count) {
+function buildHiraganaIntermediate(count, _cw) {
   const data  = pickRandom(APP_DATA.hiragana.intermediate, count);
   const cards = data.map((q, i) => {
     const choicesHtml = q.choices.map(c =>
@@ -289,7 +292,7 @@ function buildHiraganaIntermediate(count) {
   return cards;
 }
 
-function buildHiraganaAdvanced(count) {
+function buildHiraganaAdvanced(count, _cw) {
   const data  = pickRandom(APP_DATA.hiragana.advanced, count);
   const cards = data.map((q, i) => {
     const boxes = q.answer.split('').map(() =>
@@ -308,8 +311,14 @@ function buildHiraganaAdvanced(count) {
    生活単語
    ==================================================== */
 
-function buildSeikatsuBeginner(count) {
-  const data  = pickRandom(APP_DATA.seikatsu.words, count);
+function buildSeikatsuBeginner(count, customWord) {
+  let data;
+  if (customWord) {
+    const rest = pickRandom(APP_DATA.seikatsu.words, Math.max(0, count - 1));
+    data = [{ word: customWord, emoji: '✏️', category: 'カスタム' }, ...rest];
+  } else {
+    data = pickRandom(APP_DATA.seikatsu.words, count);
+  }
   const cards = data.map((q, i) => {
     const boxes = q.word.split('').map(c =>
       `<div class="seikatsu-char-col">
@@ -330,8 +339,14 @@ function buildSeikatsuBeginner(count) {
   return cards;
 }
 
-function buildSeikatsuIntermediate(count) {
-  const data  = pickRandom(APP_DATA.seikatsu.words, count);
+function buildSeikatsuIntermediate(count, customWord) {
+  let data;
+  if (customWord) {
+    const rest = pickRandom(APP_DATA.seikatsu.words, Math.max(0, count - 1));
+    data = [{ word: customWord, emoji: '✏️', category: 'カスタム' }, ...rest];
+  } else {
+    data = pickRandom(APP_DATA.seikatsu.words, count);
+  }
   const cards = data.map((q, i) => {
     const choices = APP_DATA.seikatsu.getChoices(q.word);
     const choicesHtml = choices.map(c =>
@@ -350,8 +365,14 @@ function buildSeikatsuIntermediate(count) {
   return cards;
 }
 
-function buildSeikatsuAdvanced(count) {
-  const data  = pickRandom(APP_DATA.seikatsu.words, count);
+function buildSeikatsuAdvanced(count, customWord) {
+  let data;
+  if (customWord) {
+    const rest = pickRandom(APP_DATA.seikatsu.words, Math.max(0, count - 1));
+    data = [{ word: customWord, emoji: '✏️', category: 'カスタム' }, ...rest];
+  } else {
+    data = pickRandom(APP_DATA.seikatsu.words, count);
+  }
   const cards = data.map((q, i) => {
     const boxes = q.word.split('').map(() =>
       '<div class="write-box write-box-tight"></div>'

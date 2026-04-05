@@ -3,11 +3,88 @@
  * 家庭学習プリント生成 v2
  */
 
+/** 有料プラン利用時は true（決済連携前は false で無料制限を適用） */
+const isProUser = false;
+
 /* ════════════════════════════════════════
    選択状態
 ════════════════════════════════════════ */
 let selectedContent = 'joshi';
 let selectedLevel   = 'beginner';
+
+function getMaxQuestionCount() {
+  return isProUser ? 50 : 10;
+}
+
+/** 問題数プルダウンをプランに合わせて再構築（4〜max、2問刻み） */
+function refreshQuestionCountOptions() {
+  const sel = document.getElementById('questionCount');
+  if (!sel) return;
+  const max = getMaxQuestionCount();
+  let prev = parseInt(sel.value, 10);
+  if (Number.isNaN(prev)) prev = 6;
+  if (prev > max) prev = max;
+  const frag = document.createDocumentFragment();
+  for (let n = 4; n <= max; n += 2) {
+    const opt = document.createElement('option');
+    opt.value = String(n);
+    opt.textContent = `${n}問`;
+    frag.appendChild(opt);
+  }
+  sel.innerHTML = '';
+  sel.appendChild(frag);
+  const allowed = [];
+  for (let n = 4; n <= max; n += 2) allowed.push(n);
+  sel.value = allowed.includes(prev) ? String(prev) : String(Math.min(10, max));
+}
+
+function refreshCustomWordControl() {
+  const input = document.getElementById('customWord');
+  const hint = document.getElementById('customWordHint');
+  if (!input) return;
+  input.maxLength = 15;
+  if (!isProUser) {
+    input.value = '';
+    input.disabled = true;
+    input.setAttribute('aria-readonly', 'true');
+    if (hint) {
+      hint.textContent = '有料プランで利用できます（生活単語・最大15文字）。';
+    }
+  } else {
+    input.disabled = false;
+    input.removeAttribute('aria-readonly');
+    if (hint) {
+      hint.textContent = '生活単語の1問目に反映されます（最大15文字）。';
+    }
+  }
+}
+
+/** 無料時は上級を選べないよう UI を更新 */
+function refreshLevelButtons() {
+  const adv = document.querySelector('.level-btn[data-value="advanced"]');
+  if (!adv) return;
+  if (!isProUser) {
+    adv.classList.add('level-btn--locked');
+    adv.setAttribute('aria-disabled', 'true');
+    if (selectedLevel === 'advanced') {
+      selectedLevel = 'beginner';
+      document.querySelectorAll('.level-btn').forEach((b) => {
+        const on = b.dataset.value === 'beginner';
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+  } else {
+    adv.classList.remove('level-btn--locked');
+    adv.removeAttribute('aria-disabled');
+  }
+}
+
+function applyPlanTierToUI() {
+  refreshQuestionCountOptions();
+  refreshCustomWordControl();
+  refreshLevelButtons();
+}
 
 /* ════════════════════════════════════════
    ボタントグル（コンテンツ / レベル）
@@ -26,6 +103,11 @@ document.querySelectorAll('.content-btn').forEach(btn => {
 
 document.querySelectorAll('.level-btn').forEach(btn => {
   btn.addEventListener('click', () => {
+    if (!isProUser && btn.dataset.value === 'advanced') {
+      alert('上級レベルは有料プランでご利用いただけます。');
+      openPlanModal();
+      return;
+    }
     document.querySelectorAll('.level-btn').forEach(b => {
       b.classList.remove('active');
       b.setAttribute('aria-pressed', 'false');
@@ -36,20 +118,49 @@ document.querySelectorAll('.level-btn').forEach(btn => {
   });
 });
 
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', applyPlanTierToUI);
+} else {
+  applyPlanTierToUI();
+}
+
 /* ════════════════════════════════════════
    プリント生成
 ════════════════════════════════════════ */
 function generatePrint() {
   const count    = parseInt(document.getElementById('questionCount').value, 10);
+  const level    = document.querySelector('.level-btn.active')?.dataset.value || selectedLevel;
+  const content  = document.querySelector('.content-btn.active')?.dataset.value || selectedContent;
   const showName = document.getElementById('studentName').value === 'yes';
   const showDate = document.getElementById('dateField').value === 'yes';
+
+  if (!isProUser) {
+    if (count > 10) {
+      alert('無料プランでは問題数は最大10問までです。');
+      return;
+    }
+    if (level === 'advanced') {
+      alert('上級レベルは有料プランでご利用いただけます。');
+      return;
+    }
+  }
+
+  let customWord = '';
+  if (isProUser) {
+    const cwInput = document.getElementById('customWord');
+    customWord = (cwInput && cwInput.value ? cwInput.value : '').trim();
+    if (customWord.length > 15) {
+      alert('カスタム単語は15文字までです。');
+      return;
+    }
+  }
 
   const overlay = document.getElementById('loadingOverlay');
   overlay.style.display = 'flex';
 
   setTimeout(() => {
     try {
-      const html  = generatePrintHTML(selectedContent, selectedLevel, count, showName, showDate);
+      const html  = generatePrintHTML(content, level, count, showName, showDate, customWord);
       const sheet = document.getElementById('printSheet');
       sheet.innerHTML = html;
 
@@ -69,14 +180,19 @@ function generatePrint() {
    印刷
 ════════════════════════════════════════ */
 function printSheet() {
+  if (shouldUseMobilePdfHint()) {
+    alert('スマホでは直接印刷できない場合があります。「PDF保存」から保存してご利用ください。');
+    return;
+  }
   window.print();
 }
 
 /* ════════════════════════════════════════
-   PDF 保存：印刷ダイアログ経由（Safari 含めベクターに近い出力）
-   ※ 画像化 PDF（html2canvas + jsPDF）は下記 LEGACY にコメントアウトで保持
+   PDF 保存
+   ・PC：印刷ダイアログ経由（ベクターに近い）
+   ・スマホ：html2canvas + jsPDF（window.print 禁止回避）
 ════════════════════════════════════════ */
-/** PDF保存の案内：狭い画面またはモバイルUAならスマホ向け文言 */
+/** 狭い画面またはモバイル UA ならスマホ扱い */
 function shouldUseMobilePdfHint() {
   try {
     if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) return true;
@@ -85,7 +201,7 @@ function shouldUseMobilePdfHint() {
   return /iPhone|iPod|iPad|Android/i.test(ua);
 }
 
-function savePDF() {
+async function savePDF() {
   const sheet = document.getElementById('printSheet');
 
   if (!sheet || !sheet.innerHTML.trim()) {
@@ -98,26 +214,30 @@ function savePDF() {
     return;
   }
 
-  const msgPc =
-    'このあと印刷画面が開きます。\n\n左下の「PDF」から「PDFに保存」を選んでください。';
-  const msgMobile =
-    'このあと印刷画面が開きます。\n\n保存または共有メニューからPDFとして保存してください。';
-  alert(shouldUseMobilePdfHint() ? msgMobile : msgPc);
+  if (shouldUseMobilePdfHint()) {
+    const overlay = document.getElementById('loadingOverlay');
+    const loadingP = overlay && overlay.querySelector('p');
+    const prevText = loadingP ? loadingP.textContent : '';
+    if (loadingP) loadingP.textContent = 'スマホ用のPDFを作成しています。少しお待ちください。';
+    if (overlay) overlay.style.display = 'flex';
+    try {
+      await savePdfViaHtml2Canvas();
+    } finally {
+      if (overlay) overlay.style.display = 'none';
+      if (loadingP) loadingP.textContent = prevText || 'プリントを生成しています…';
+    }
+    return;
+  }
+
+  alert(
+    'このあと印刷画面が開きます。\n\n左下の「PDF」から「PDFに保存」を選んでください。'
+  );
   window.print();
 }
 
-/*
- * ─── LEGACY: html2canvas + jsPDF（画像化 PDF 生成）────────────────────────
- * 復帰するときは savePDF を async に戻し、下記本体を有効化。index.html の
- * html2canvas / jspdf の script タグのコメントも外すこと。
- * ───────────────────────────────────────────────────────────────────────
-async function savePDF_legacy_html2canvas() {
+/** スマホ向け：html2canvas + jsPDF で画像 PDF をダウンロード */
+async function savePdfViaHtml2Canvas() {
   const sheet = document.getElementById('printSheet');
-
-  if (!sheet || !sheet.innerHTML.trim()) {
-    alert('まずプリントを生成してください。');
-    return;
-  }
 
   if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
     alert('PDFライブラリの読み込みに失敗しました。\nページを再読み込みして再度お試しください。');
@@ -134,6 +254,11 @@ async function savePDF_legacy_html2canvas() {
     alert('プリントに問題が含まれていません。');
     return;
   }
+
+  const contentSel =
+    document.querySelector('.content-btn.active')?.dataset.value || selectedContent;
+  const levelSel =
+    document.querySelector('.level-btn.active')?.dataset.value || selectedLevel;
 
   const host = document.createElement('div');
   host.setAttribute('aria-hidden', 'true');
@@ -275,15 +400,16 @@ async function savePDF_legacy_html2canvas() {
 
     const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
     const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
-    pdf.save(`プリント_${contentLabels[selectedContent]}_${levelLabels[selectedLevel]}_${dateStamp()}.pdf`);
+    pdf.save(
+      `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`
+    );
   } catch (e) {
     console.error('PDF保存エラー:', e);
-    alert('PDFの生成に失敗しました。\nブラウザの印刷機能（Ctrl+P）→「PDFに保存」もお試しください。');
+    alert('PDFの生成に失敗しました。\n通信環境を確認のうえ、再度お試しください。');
   } finally {
     host.remove();
   }
 }
-────────────────────────────────────────────────────────────────────────── */
 
 function dateStamp() {
   const d  = new Date();
@@ -318,11 +444,9 @@ function closePlanModalOutside(event) {
   }
 }
 
-// 有料プランCTAクリック（将来の決済ページへ誘導）
+/** LINE 登録（仮URL・本番で差し替え） */
 function goPro() {
-  // ※ 将来ここを決済URLに差し替える
-  // 例: window.location.href = 'https://your-payment-page.com/pro';
-  alert('有料プランは現在準備中です。\nリリース時にお知らせします。ご期待ください！🎉');
+  window.open('https://lin.ee/XXXXXXXX', '_blank', 'noopener,noreferrer');
 }
 
 /* ════════════════════════════════════════

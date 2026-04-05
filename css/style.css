@@ -1183,15 +1183,15 @@ body {
     min-height: 0 !important;
   }
 
-  /* ── ⑥ 問題カード：改ページ制御（カード間は margin-bottom のみ） ── */
+  /* ── ⑥ 問題カード：改ページ制御（カード間は margin-bottom のみ）。余白は画面よりやや詰める */
   .question-card {
     display: block !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
     -webkit-column-break-inside: avoid !important;
     border: 1.5pt solid #dadce0 !important;
-    padding: 5pt 7pt !important;
-    margin-bottom: 3mm !important;
+    padding: 4pt 6pt !important;
+    margin-bottom: 2.5mm !important;
   }
 
   .questions-grid .question-card:last-child {
@@ -1200,7 +1200,7 @@ body {
 
   .question-card .choice-sentence,
   .question-card .desc-sentence {
-    margin-bottom: 4pt !important;
+    margin-bottom: 3pt !important;
   }
 
   .question-card .trace-area {
@@ -1208,32 +1208,32 @@ body {
   }
 
   .question-card .trace-second-row {
-    margin-top: 3pt !important;
+    margin-top: 2pt !important;
   }
 
   .question-card .choices-row {
-    gap: 4pt !important;
+    gap: 3pt !important;
   }
 
   .question-card .hiragana-grid {
-    margin-top: 2pt !important;
+    margin-top: 1pt !important;
   }
 
   .question-card .emoji-question-row,
   .question-card .emoji-question-row--tight {
-    gap: 6pt !important;
+    gap: 5pt !important;
   }
 
   .question-card .emoji-question-prompt {
-    margin-bottom: 2pt !important;
+    margin-bottom: 1pt !important;
   }
 
   .question-card .adv-prompt {
-    margin-bottom: 3pt !important;
+    margin-bottom: 2pt !important;
   }
 
   .question-card .adv-prompt-sub {
-    margin-bottom: 3pt !important;
+    margin-bottom: 2pt !important;
   }
 
   /* ── ⑦ フォント・色を印刷向けに最適化 ── */

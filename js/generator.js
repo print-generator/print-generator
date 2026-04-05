@@ -51,11 +51,25 @@ function generatePrintHTML(content, level, count, showName, showDate) {
   return wrapPrintPagesHtml(chunks, header, instr, footer);
 }
 
-/** 助詞・生活単語・中級以下は 3 問／ページ。上級・ひらがなは 2 問／ページ */
+/**
+ * 1 print-page あたりの問題数（HTML 単位の改ページ。カード途中分割はしない）
+ * 助詞: 初・中 4 / 上 3
+ * ひらがな: 初 2 / 中 4 / 上 3
+ * 生活: 初 3 / 中・上 4
+ */
 function getCardsPerPage(content, level) {
-  if (content === 'hiragana') return 2;
-  if (level === 'advanced') return 2;
-  return 3;
+  if (content === 'joshi') {
+    return level === 'advanced' ? 3 : 4;
+  }
+  if (content === 'hiragana') {
+    if (level === 'beginner') return 2;
+    if (level === 'intermediate') return 4;
+    return 3;
+  }
+  if (content === 'seikatsu') {
+    return level === 'beginner' ? 3 : 4;
+  }
+  return 4;
 }
 
 /** question-card HTML の配列を固定サイズで分割 */

@@ -53,24 +53,20 @@ function generatePrintHTML(content, level, count, showName, showDate, customWord
 
 /**
  * 1 print-page あたりの問題数（HTML 単位の改ページ。カード途中分割はしない）
- * 助詞: 初・中 5 / 上 4
- * ひらがな: 初 3 / 中 4 / 上 4
- * 生活: 初 4 / 中 5 / 上 4
+ * 6問を原則1ページに収めるため、軽いモードは 6 問／ページを優先。記述多めの上級は控えめに。
  */
 function getCardsPerPage(content, level) {
   if (content === 'joshi') {
-    return level === 'advanced' ? 4 : 5;
+    return level === 'advanced' ? 4 : 6;
   }
   if (content === 'hiragana') {
-    if (level === 'beginner') return 3;
-    return 4;
+    if (level === 'advanced') return 4;
+    return 6;
   }
   if (content === 'seikatsu') {
-    if (level === 'beginner') return 4;
-    if (level === 'intermediate') return 5;
-    return 4;
+    return level === 'advanced' ? 4 : 6;
   }
-  return 4;
+  return 6;
 }
 
 /** question-card HTML の配列を固定サイズで分割 */
@@ -134,7 +130,7 @@ function buildPrintHeader(meta, showName, showDate) {
     <span class="info-line"></span>
   </div>` : '';
   const dateRow = showDate ? `<div class="print-info-row">
-    <span class="info-label">にち：</span>
+    <span class="info-label">ひづけ：</span>
     <span class="info-line"></span>
   </div>` : '';
 

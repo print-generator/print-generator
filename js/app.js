@@ -289,7 +289,18 @@ async function savePDF() {
   window.print();
 }
 
-/** スマホ向け：html2canvas + jsPDF で画像 PDF をダウンロード */
+function sleepPdf(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForPaintPdf() {
+  await new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
+  await sleepPdf(50);
+}
+
+/** スマホ向け：画面上の #printSheet 内 .print-page をそのまま html2canvas（非表示クローンは Safari で白紙になりやすい） */
 async function savePdfViaHtml2Canvas() {
   const sheet = document.getElementById('printSheet');
 
@@ -298,13 +309,7 @@ async function savePdfViaHtml2Canvas() {
     return;
   }
 
-  const header = sheet.querySelector('.print-header');
-  const instr = sheet.querySelector('.print-instruction');
-  const footer = sheet.querySelector('.print-footer');
-  const grid = sheet.querySelector('.questions-grid');
-  const cards = Array.from(sheet.querySelectorAll('.question-card'));
-
-  if (!cards.length) {
+  if (!sheet.querySelector('.question-card')) {
     alert('プリントに問題が含まれていません。');
     return;
   }
@@ -314,14 +319,101 @@ async function savePdfViaHtml2Canvas() {
   const levelSel =
     document.querySelector('.level-btn.active')?.dataset.value || selectedLevel;
 
+  sheet.scrollIntoView({ block: 'center', behavior: 'auto' });
+
+  try {
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+    await waitForPaintPdf();
+    await sleepPdf(120);
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const marginMm = 12;
+    const usableWidth = 210 - marginMm * 2;
+    const scale = Math.min(2.25, Math.max(1.5, (window.devicePixelRatio || 2)));
+
+    const pageEls = sheet.querySelectorAll('.print-page');
+
+    if (pageEls.length === 0) {
+      await captureOneToPdf(sheet, pdf, marginMm, usableWidth, scale, true);
+    } else {
+      for (let p = 0; p < pageEls.length; p++) {
+        const el = pageEls[p];
+        el.scrollIntoView({ block: 'center', behavior: 'auto' });
+        await waitForPaintPdf();
+        await sleepPdf(80);
+        const canvas = await html2canvas(el, {
+          scale,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          foreignObjectRendering: false,
+          allowTaint: false,
+        });
+        if (!canvas || canvas.width < 2 || canvas.height < 2) {
+          throw new Error('empty canvas');
+        }
+        addCanvasPageToPdf(pdf, canvas, marginMm, usableWidth, p > 0);
+      }
+    }
+
+    const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
+    const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
+    pdf.save(
+      `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`
+    );
+  } catch (e) {
+    console.error('PDF保存エラー:', e);
+    try {
+      await savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel);
+    } catch (e2) {
+      console.error('PDFフォールバック失敗:', e2);
+      alert('PDFの生成に失敗しました。\n通信環境を確認のうえ、再度お試しください。');
+    }
+  }
+}
+
+function addCanvasPageToPdf(pdf, canvas, marginMm, usableWidth, addPageBefore) {
+  const pxPerMm = canvas.width / usableWidth;
+  const imgHeightMm = canvas.height / pxPerMm;
+  const img = canvas.toDataURL('image/png', 0.92);
+  if (addPageBefore) pdf.addPage();
+  pdf.addImage(img, 'PNG', marginMm, marginMm, usableWidth, imgHeightMm);
+}
+
+async function captureOneToPdf(el, pdf, marginMm, usableWidth, scale, isFirst) {
+  const canvas = await html2canvas(el, {
+    scale,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+    foreignObjectRendering: false,
+  });
+  if (!canvas || canvas.width < 2 || canvas.height < 2) {
+    throw new Error('empty canvas');
+  }
+  addCanvasPageToPdf(pdf, canvas, marginMm, usableWidth, !isFirst);
+}
+
+/** 万一 .print-page キャプチャが失敗したとき用（旧ロジック・非表示DOMは最後の手段） */
+async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) {
+  const header = sheet.querySelector('.print-header');
+  const instr = sheet.querySelector('.print-instruction');
+  const footer = sheet.querySelector('.print-footer');
+  const grid = sheet.querySelector('.questions-grid');
+  const cards = Array.from(sheet.querySelectorAll('.question-card'));
+
   const host = document.createElement('div');
   host.setAttribute('aria-hidden', 'true');
-  host.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;pointer-events:none;';
+  host.style.cssText =
+    'position:fixed;left:-9999px;top:0;width:186mm;max-width:100%;margin:0;pointer-events:none;z-index:-1;opacity:1;visibility:visible;overflow:visible;';
 
   const cs = getComputedStyle(sheet);
   const gridCs = grid ? getComputedStyle(grid) : null;
-
-  const PDF_PAGE_HEIGHT_SAFETY_PX = 16;
+  const PDF_PAGE_HEIGHT_SAFETY_PX = 24;
+  const sheetW = Math.max(sheet.offsetWidth, sheet.scrollWidth, 320);
 
   function getMaxPageHeightPx() {
     const d = document.createElement('div');
@@ -330,13 +422,14 @@ async function savePdfViaHtml2Canvas() {
       'position:absolute',
       'left:-9999px',
       'top:0',
-      `width:${sheet.offsetWidth}px`,
+      `width:${sheetW}px`,
       'height:273mm',
       `box-sizing:${cs.boxSizing}`,
       `padding:${cs.padding}`,
       'margin:0',
       'border:none',
       'background:#fff',
+      'visibility:visible',
     ].join(';');
     document.body.appendChild(d);
     const h = d.offsetHeight;
@@ -348,13 +441,14 @@ async function savePdfViaHtml2Canvas() {
     const wrap = document.createElement('div');
     wrap.className = `${sheet.className} pdf-export-surface pdf-capturing`.trim();
     wrap.style.cssText = [
-      `width:${sheet.offsetWidth}px`,
+      `width:${sheetW}px`,
       `box-sizing:${cs.boxSizing}`,
       `padding:${cs.padding}`,
       'margin:0',
       'background:#fff',
       'display:flex',
       'flex-direction:column',
+      'visibility:visible',
     ].join(';');
 
     if (isFirst) {
@@ -366,8 +460,6 @@ async function savePdfViaHtml2Canvas() {
     g.style.display = 'flex';
     g.style.flexDirection = 'column';
     g.style.flex = 'none';
-    g.style.flexGrow = '0';
-    g.style.flexShrink = '0';
     g.style.gap = gridCs ? gridCs.gap : '8px';
     slice.forEach((c) => g.appendChild(c.cloneNode(true)));
     wrap.appendChild(g);
@@ -410,59 +502,55 @@ async function savePdfViaHtml2Canvas() {
     idx = best + 1;
   }
 
-  try {
-    if (document.fonts && document.fonts.ready) {
-      await document.fonts.ready;
-    }
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(resolve));
+  if (document.fonts && document.fonts.ready) {
+    await document.fonts.ready;
+  }
+  await waitForPaintPdf();
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const marginMm = 12;
+  const pageWidth = 210;
+  const usableWidth = pageWidth - marginMm * 2;
+  const PDF_SCALE = 2;
+
+  for (let p = 0; p < pageSlices.length; p++) {
+    const isFirst = p === 0;
+    const isLastPageOfDoc = p === pageSlices.length - 1;
+    const frag = buildPageFragment(pageSlices[p], isFirst, isLastPageOfDoc);
+    host.appendChild(frag);
+    void frag.offsetHeight;
+    await waitForPaintPdf();
+
+    const canvas = await html2canvas(frag, {
+      scale: PDF_SCALE,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      foreignObjectRendering: false,
     });
 
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const marginMm = 12;
-    const pageWidth = 210;
-    const usableWidth = pageWidth - marginMm * 2;
-    const PDF_SCALE = 3;
+    host.removeChild(frag);
 
-    for (let p = 0; p < pageSlices.length; p++) {
-      const isFirst = p === 0;
-      const isLastPageOfDoc = p === pageSlices.length - 1;
-      const frag = buildPageFragment(pageSlices[p], isFirst, isLastPageOfDoc);
-      host.appendChild(frag);
-      void frag.offsetHeight;
-      await new Promise((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve));
-      });
-
-      const canvas = await html2canvas(frag, {
-        scale: PDF_SCALE,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-      });
-
-      host.removeChild(frag);
-
-      const pxPerMm = canvas.width / usableWidth;
-      const imgHeightMm = canvas.height / pxPerMm;
-      const img = canvas.toDataURL('image/png');
-
-      if (p > 0) pdf.addPage();
-      pdf.addImage(img, 'PNG', marginMm, marginMm, usableWidth, imgHeightMm);
+    if (!canvas || canvas.width < 2) {
+      host.remove();
+      throw new Error('blank canvas');
     }
 
-    const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
-    const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
-    pdf.save(
-      `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`
-    );
-  } catch (e) {
-    console.error('PDF保存エラー:', e);
-    alert('PDFの生成に失敗しました。\n通信環境を確認のうえ、再度お試しください。');
-  } finally {
-    host.remove();
+    const pxPerMm = canvas.width / usableWidth;
+    const imgHeightMm = canvas.height / pxPerMm;
+    const img = canvas.toDataURL('image/png');
+    if (p > 0) pdf.addPage();
+    pdf.addImage(img, 'PNG', marginMm, marginMm, usableWidth, imgHeightMm);
   }
+
+  host.remove();
+
+  const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
+  const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
+  pdf.save(
+    `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`
+  );
 }
 
 function dateStamp() {

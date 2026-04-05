@@ -609,10 +609,18 @@ body {
 }
 .print-title-block .print-category { font-size: .78rem; color: var(--primary); font-weight: 700; letter-spacing: .06em; margin-bottom: 4px; }
 .print-title-block .print-title { font-size: 1.6rem; font-weight: 900; color: var(--text); letter-spacing: .04em; }
-.print-info-block { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
-.print-info-row { display: flex; align-items: center; gap: 6px; font-size: .85rem; }
+.print-info-block { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+.print-info-row { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
 .info-label { color: var(--text-sub); font-weight: 500; }
-.info-line { border-bottom: 1.5px solid #999; width: 120px; height: 18px; }
+.info-line {
+  border-bottom: 1.5px solid #999;
+  width: 180px;
+  min-width: 160px;
+  min-height: 24px;
+  height: 24px;
+  display: inline-block;
+  vertical-align: bottom;
+}
 .print-instruction {
   background: var(--primary-light); border-left: 4px solid var(--primary);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
@@ -1059,6 +1067,209 @@ body {
   outline: 3px solid var(--primary-soft);
   outline-offset: 3px;
 }
+
+/* ── 有料プラン LP（pricing.html） ── */
+body.lp-pricing-page {
+  margin: 0;
+  background: #fafcfd;
+  font-family: var(--font);
+  color: var(--text);
+  min-height: 100vh;
+}
+.lp-wrap {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+  box-sizing: border-box;
+}
+.lp-back { margin-bottom: 20px; }
+.lp-back a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+.lp-back a:hover { text-decoration: underline; }
+.lp-hero {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+.lp-hero-label {
+  display: inline-block;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: .08em;
+  margin-bottom: 12px;
+}
+.lp-hero-title {
+  font-size: clamp(1.35rem, 4.2vw, 1.8rem);
+  font-weight: 900;
+  line-height: 1.4;
+  margin: 0 0 16px;
+  letter-spacing: .03em;
+}
+.lp-hero-sub {
+  font-size: .95rem;
+  line-height: 1.75;
+  color: var(--text-sub);
+  margin: 0;
+}
+.lp-value-card {
+  background: #fff;
+  border: 1px solid #e3e8ef;
+  border-radius: 12px;
+  padding: 22px 20px 24px;
+  margin: 28px 0;
+  box-shadow: 0 4px 24px rgba(26, 115, 232, 0.07);
+}
+.lp-value-lead {
+  font-size: .95rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+  text-align: center;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, var(--primary-light) 0%, #e8f4fe 100%);
+  border-radius: 8px;
+  border-left: 4px solid var(--primary);
+  line-height: 1.55;
+}
+.lp-value-desc {
+  font-size: .88rem;
+  line-height: 1.75;
+  color: var(--text-sub);
+  margin: 0 0 18px;
+}
+.lp-value-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lp-value-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: .9rem;
+  line-height: 1.5;
+}
+.lp-value-list i {
+  color: var(--primary);
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+.lp-section-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-align: center;
+  margin: 0 0 16px;
+  color: var(--text);
+}
+.lp-compare { margin: 32px 0 8px; }
+.lp-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.lp-compare-card {
+  border-radius: 10px;
+  padding: 18px 16px;
+  border: 1px solid var(--border);
+  background: #fff;
+  position: relative;
+}
+.lp-compare-card--free { background: #f9fafb; }
+.lp-compare-card--pro {
+  border-color: var(--primary-soft);
+  box-shadow: 0 2px 16px rgba(26, 115, 232, 0.12);
+}
+.lp-compare-badge {
+  position: absolute;
+  top: -10px;
+  right: 12px;
+  background: linear-gradient(135deg, var(--gold) 0%, #e69500 100%);
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.lp-compare-name {
+  font-size: .95rem;
+  margin: 0 0 6px;
+  font-weight: 800;
+}
+.lp-compare-price {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--primary-dark);
+  margin: 0 0 12px;
+}
+.lp-compare-price span {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+.lp-compare-card ul {
+  margin: 0;
+  padding-left: 1.15em;
+  font-size: .82rem;
+  line-height: 1.65;
+  color: var(--text);
+}
+.lp-cta {
+  text-align: center;
+  padding: 32px 12px 16px;
+  margin-top: 8px;
+}
+.lp-cta-lead {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 16px;
+}
+.lp-line-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: min(320px, 100%);
+  padding: 16px 36px;
+  background: linear-gradient(135deg, #06c755 0%, #05a546 100%);
+  color: #fff !important;
+  border: none;
+  border-radius: 50px;
+  font-family: var(--font);
+  font-size: 1.12rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 6px 22px rgba(6, 199, 85, 0.4);
+  transition: transform .2s, box-shadow .2s;
+}
+.lp-line-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(6, 199, 85, 0.48);
+  color: #fff;
+}
+.lp-line-btn:focus-visible {
+  outline: 3px solid var(--primary-soft);
+  outline-offset: 3px;
+}
+.lp-cta-note {
+  font-size: .8rem;
+  color: var(--text-sub);
+  margin: 14px 0 0;
+}
+@media (max-width: 560px) {
+  .lp-compare-grid { grid-template-columns: 1fr; }
+}
+@media (min-width: 561px) {
+  br.sp-br { display: none; }
+}
+
 .plan-btn {
   width: 100%; padding: 12px; border: none; border-radius: 50px;
   font-family: var(--font); font-size: .95rem; font-weight: 700; cursor: pointer; transition: all .2s;
@@ -1334,14 +1545,14 @@ body {
     min-height: 0 !important;
   }
 
-  /* ── ⑥ 問題カード：改ページ制御（カード間は margin-bottom のみ）。余白を詰めて枚数削減 */
+  /* ── ⑥ 問題カード：改ページ制御（6問1ページを狙うためごく僅かに詰める） */
   .question-card {
     display: block !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
     -webkit-column-break-inside: avoid !important;
     border: 1.5pt solid #dadce0 !important;
-    padding: 3pt 5pt !important;
+    padding: 2.5pt 5pt !important;
     margin-bottom: 1.5mm !important;
   }
 
@@ -1470,6 +1681,19 @@ body {
     border-bottom: 2pt solid #1a73e8 !important;
     margin-bottom: 1mm !important;
     padding-bottom: 1mm !important;
+  }
+  .print-info-block {
+    gap: 9pt !important;
+  }
+  .print-info-row {
+    gap: 8pt !important;
+  }
+  .info-line {
+    width: 52mm !important;
+    min-width: 48mm !important;
+    min-height: 7mm !important;
+    height: 7mm !important;
+    border-bottom: 1.5pt solid #999 !important;
   }
 
   /* ── ⑬ プリントフッター ── */

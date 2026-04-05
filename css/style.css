@@ -1079,7 +1079,7 @@ body {
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
-    font-size: 10pt;
+    font-size: 9.5pt;
     display: block !important;
   }
 
@@ -1155,7 +1155,7 @@ body {
     min-width: 0 !important;
     min-height: 0 !important;
     /* 用紙余白は @page に任せ、シート内は軽い内側余白のみ */
-    padding: 5mm 6mm !important;
+    padding: 4mm 5mm !important;
     margin: 0 auto !important;
     box-shadow: none !important;
     border-radius: 0 !important;
@@ -1183,15 +1183,15 @@ body {
     min-height: 0 !important;
   }
 
-  /* ── ⑥ 問題カード：改ページ制御（カード間は margin-bottom のみ）。余白は画面よりやや詰める */
+  /* ── ⑥ 問題カード：改ページ制御（カード間は margin-bottom のみ）。余白を詰めて枚数削減 */
   .question-card {
     display: block !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
     -webkit-column-break-inside: avoid !important;
     border: 1.5pt solid #dadce0 !important;
-    padding: 4pt 6pt !important;
-    margin-bottom: 2.5mm !important;
+    padding: 3pt 5pt !important;
+    margin-bottom: 1.5mm !important;
   }
 
   .questions-grid .question-card:last-child {
@@ -1200,53 +1200,62 @@ body {
 
   .question-card .choice-sentence,
   .question-card .desc-sentence {
-    margin-bottom: 3pt !important;
+    margin-bottom: 2pt !important;
+    font-size: 11pt !important;
+    line-height: 1.32 !important;
   }
 
   .question-card .trace-area {
-    margin-top: 1pt !important;
+    margin-top: 0 !important;
+    font-size: 15pt !important;
+    line-height: 1.12 !important;
   }
 
   .question-card .trace-second-row {
-    margin-top: 2pt !important;
+    margin-top: 1pt !important;
   }
 
   .question-card .choices-row {
-    gap: 3pt !important;
+    gap: 2pt !important;
+  }
+
+  .question-card .choice-item {
+    font-size: 10pt !important;
+    padding: 2pt 8pt !important;
   }
 
   .question-card .hiragana-grid {
-    margin-top: 1pt !important;
+    margin-top: 0 !important;
   }
 
   .question-card .emoji-question-row,
   .question-card .emoji-question-row--tight {
-    gap: 5pt !important;
+    gap: 4pt !important;
   }
 
   .question-card .emoji-question-prompt {
-    margin-bottom: 1pt !important;
+    margin-bottom: 0 !important;
   }
 
   .question-card .adv-prompt {
-    margin-bottom: 2pt !important;
+    margin-bottom: 1pt !important;
   }
 
   .question-card .adv-prompt-sub {
-    margin-bottom: 2pt !important;
+    margin-bottom: 1pt !important;
   }
 
-  /* ── ⑦ フォント・色を印刷向けに最適化 ── */
+  /* ── ⑦ フォント・色を印刷向けに最適化（必要最低限で一段小さく） ── */
   .print-title {
-    font-size: 16pt !important;
+    font-size: 15pt !important;
   }
   .print-category {
-    font-size: 8.5pt !important;
+    font-size: 8pt !important;
   }
   .print-instruction {
-    font-size: 8.5pt !important;
-    padding: 2pt 6pt !important;
-    margin-bottom: 2.5mm !important;
+    font-size: 8pt !important;
+    padding: 1pt 4pt !important;
+    margin-bottom: 1.5mm !important;
     border-left: 3pt solid #1a73e8 !important;
     background: #e8f0fe !important;
   }
@@ -1258,11 +1267,11 @@ body {
     print-color-adjust: exact;
   }
   .trace-char {
-    font-size: 18pt !important;
+    font-size: 17pt !important;
   }
   .hira-trace {
     color: #aaccff !important;
-    font-size: 18pt !important;
+    font-size: 17pt !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -1308,16 +1317,16 @@ body {
   .print-header {
     flex-shrink: 0 !important;
     border-bottom: 2pt solid #1a73e8 !important;
-    margin-bottom: 2mm !important;
-    padding-bottom: 2mm !important;
+    margin-bottom: 1mm !important;
+    padding-bottom: 1mm !important;
   }
 
   /* ── ⑬ プリントフッター ── */
   .print-footer {
     border-top: 0.5pt solid #dadce0 !important;
-    padding-top: 2mm !important;
-    margin-top: 4pt !important;
-    font-size: 7pt !important;
+    padding-top: 1mm !important;
+    margin-top: 2pt !important;
+    font-size: 6.5pt !important;
     color: #bbb !important;
   }
 
@@ -1332,23 +1341,23 @@ body {
   /* ── ⑮ ひらがなグリッドを印刷向けサイズに ── */
   .hiragana-grid {
     grid-template-columns: repeat(5, 1fr) !important;
-    gap: 3mm !important;
+    gap: 2.5mm !important;
   }
-  .hira-cell { gap: 1.5mm !important; }
+  .hira-cell { gap: 1.2mm !important; }
   .hira-write {
-    width: 13mm !important;
-    height: 13mm !important;
+    width: 12mm !important;
+    height: 12mm !important;
   }
 
   /* ── ⑯ 生活単語カードを印刷向けに ── */
   .word-card-grid {
-    gap: 3mm !important;
+    gap: 2.5mm !important;
   }
   .word-card {
     border: 1.5pt solid #dadce0 !important;
-    padding: 2.5mm !important;
+    padding: 2mm !important;
   }
-  .word-emoji { font-size: 20pt !important; }
+  .word-emoji { font-size: 18pt !important; }
 }
 
 /* ============================================

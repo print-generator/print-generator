@@ -1156,31 +1156,30 @@ body {
     border: none !important;
     background: #fff !important;
     box-sizing: border-box !important;
-    display: flex !important;
-    flex-direction: column !important;
-    page-break-inside: auto;
-    break-inside: auto;
+    /* flex だと Safari 等で break-inside が効きにくいため block に */
+    display: block !important;
     /* hidden だと子の改ページが欠けることがあるため visible のまま */
     overflow: visible !important;
     text-align: left !important;
   }
 
-  /* 画面用の flex:1 による伸長を印刷では無効化（子の高さに合わせる） */
   .questions-grid {
-    gap: 2pt !important;
-    flex: none !important;
-    flex-grow: 0 !important;
-    flex-shrink: 0 !important;
+    display: block !important;
     min-height: 0 !important;
   }
 
-  /* ── ⑥ 問題カード：改ページ制御 ── */
+  /* ── ⑥ 問題カード：改ページ制御（カード間は margin-bottom のみ） ── */
   .question-card {
-    break-inside: avoid;
-    page-break-inside: avoid;
-    -webkit-column-break-inside: avoid;
+    display: block !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
     border: 1.5pt solid #dadce0 !important;
     padding: 5pt 7pt !important;
+    margin-bottom: 3mm !important;
+  }
+
+  .questions-grid .question-card:last-child {
     margin-bottom: 0 !important;
   }
 

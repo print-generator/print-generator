@@ -300,7 +300,10 @@ async function waitForPaintPdf() {
   await sleepPdf(50);
 }
 
-/** スマホ向け：画面上の #printSheet 内 .print-page をそのまま html2canvas（非表示クローンは Safari で白紙になりやすい） */
+/**
+ * スマホ向け：.print-page を cloneNode し、body 直下の可視一時コンテナ内で html2canvas。
+ * （スクロール直後の要素・画面外DOMの直接キャプチャは Safari で白紙になりやすいため使わない）
+ */
 async function savePdfViaHtml2Canvas() {
   const sheet = document.getElementById('printSheet');
 
@@ -319,8 +322,6 @@ async function savePdfViaHtml2Canvas() {
   const levelSel =
     document.querySelector('.level-btn.active')?.dataset.value || selectedLevel;
 
-  sheet.scrollIntoView({ block: 'center', behavior: 'auto' });
-
   try {
     if (document.fonts && document.fonts.ready) {
       await document.fonts.ready;
@@ -334,17 +335,45 @@ async function savePdfViaHtml2Canvas() {
     const usableWidth = 210 - marginMm * 2;
     const scale = Math.min(2.25, Math.max(1.5, (window.devicePixelRatio || 2)));
 
+    const sheetW = Math.max(sheet.offsetWidth || 0, sheet.scrollWidth || 0, 320);
     const pageEls = sheet.querySelectorAll('.print-page');
 
-    if (pageEls.length === 0) {
-      await captureOneToPdf(sheet, pdf, marginMm, usableWidth, scale, true);
-    } else {
-      for (let p = 0; p < pageEls.length; p++) {
-        const el = pageEls[p];
-        el.scrollIntoView({ block: 'center', behavior: 'auto' });
+    const host = document.createElement('div');
+    host.id = 'pdfTempCaptureHost';
+    host.setAttribute('aria-hidden', 'true');
+    host.style.cssText = [
+      'position:fixed',
+      'left:0',
+      'top:0',
+      'z-index:2147483646',
+      'opacity:1',
+      'visibility:visible',
+      'pointer-events:none',
+      'background:#ffffff',
+      'box-sizing:border-box',
+      'overflow:hidden',
+      `width:${sheetW}px`,
+      'max-width:100vw',
+    ].join(';');
+    document.body.appendChild(host);
+
+    try {
+      const captureTargets = pageEls.length
+        ? Array.from(pageEls)
+        : [sheet];
+
+      for (let p = 0; p < captureTargets.length; p++) {
+        const src = captureTargets[p];
+        const clone = src.cloneNode(true);
+        clone.style.width = `${sheetW}px`;
+        clone.style.boxSizing = 'border-box';
+        clone.style.maxWidth = '100%';
+        host.appendChild(clone);
+        void clone.offsetHeight;
         await waitForPaintPdf();
-        await sleepPdf(80);
-        const canvas = await html2canvas(el, {
+        await sleepPdf(50);
+
+        const canvas = await html2canvas(clone, {
           scale,
           useCORS: true,
           backgroundColor: '#ffffff',
@@ -352,18 +381,23 @@ async function savePdfViaHtml2Canvas() {
           foreignObjectRendering: false,
           allowTaint: false,
         });
+
+        host.removeChild(clone);
+
         if (!canvas || canvas.width < 2 || canvas.height < 2) {
           throw new Error('empty canvas');
         }
         addCanvasPageToPdf(pdf, canvas, marginMm, usableWidth, p > 0);
       }
-    }
 
-    const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
-    const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
-    pdf.save(
-      `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`
-    );
+      const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
+      const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
+      pdf.save(
+        `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`
+      );
+    } finally {
+      host.remove();
+    }
   } catch (e) {
     console.error('PDF保存エラー:', e);
     try {
@@ -381,20 +415,6 @@ function addCanvasPageToPdf(pdf, canvas, marginMm, usableWidth, addPageBefore) {
   const img = canvas.toDataURL('image/png', 0.92);
   if (addPageBefore) pdf.addPage();
   pdf.addImage(img, 'PNG', marginMm, marginMm, usableWidth, imgHeightMm);
-}
-
-async function captureOneToPdf(el, pdf, marginMm, usableWidth, scale, isFirst) {
-  const canvas = await html2canvas(el, {
-    scale,
-    useCORS: true,
-    backgroundColor: '#ffffff',
-    logging: false,
-    foreignObjectRendering: false,
-  });
-  if (!canvas || canvas.width < 2 || canvas.height < 2) {
-    throw new Error('empty canvas');
-  }
-  addCanvasPageToPdf(pdf, canvas, marginMm, usableWidth, !isFirst);
 }
 
 /** 万一 .print-page キャプチャが失敗したとき用（旧ロジック・非表示DOMは最後の手段） */

@@ -1360,6 +1360,17 @@ body {
   .word-emoji { font-size: 18pt !important; }
 }
 
+/* スマホ Safari 等：印刷プレビューで ::after の多層 linear-gradient が黒塗りに崩れることがあるため、
+   疑似要素の十字線のみ無効化（枠線は @media print 内の .write-box / .hira-write の border を維持） */
+@media print and (max-width: 768px) {
+  .write-box::after,
+  .hira-write::after {
+    content: none !important;
+    display: none !important;
+    background: none !important;
+  }
+}
+
 /* ============================================
    PDF キャプチャ中の一時スタイル
    （html2canvas が正しく描画できるよう補助）

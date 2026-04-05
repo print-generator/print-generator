@@ -1,5 +1,5 @@
 /**
- * app.js  —  UI操作・モーダル・FAQ・印刷・PDF出力
+ * app.js  —  UI操作・モーダル・FAQ・印刷・PDF（印刷ダイアログ経由）
  * 特支プリント生成アプリ v2
  */
 
@@ -73,10 +73,32 @@ function printSheet() {
 }
 
 /* ════════════════════════════════════════
-   PDF 保存（html2canvas + jsPDF）
-   question-card 単位でページ分割し、各ページを個別にキャプチャする
+   PDF 保存：印刷ダイアログ経由（Safari 含めベクターに近い出力）
+   ※ 画像化 PDF（html2canvas + jsPDF）は下記 LEGACY にコメントアウトで保持
 ════════════════════════════════════════ */
-async function savePDF() {
+function savePDF() {
+  const sheet = document.getElementById('printSheet');
+
+  if (!sheet || !sheet.innerHTML.trim()) {
+    alert('まずプリントを生成してください。');
+    return;
+  }
+
+  if (!sheet.querySelector('.question-card')) {
+    alert('プリントに問題が含まれていません。');
+    return;
+  }
+
+  alert('このあと印刷画面が開きます。\n\n左下の PDF から「PDFに保存」を選んでください。');
+  window.print();
+}
+
+/*
+ * ─── LEGACY: html2canvas + jsPDF（画像化 PDF 生成）────────────────────────
+ * 復帰するときは savePDF を async に戻し、下記本体を有効化。index.html の
+ * html2canvas / jspdf の script タグのコメントも外すこと。
+ * ───────────────────────────────────────────────────────────────────────
+async function savePDF_legacy_html2canvas() {
   const sheet = document.getElementById('printSheet');
 
   if (!sheet || !sheet.innerHTML.trim()) {
@@ -107,10 +129,8 @@ async function savePDF() {
   const cs = getComputedStyle(sheet);
   const gridCs = grid ? getComputedStyle(grid) : null;
 
-  /** offsetHeight と html2canvas の描画高の差・Safari のレイアウト誤差を吸収（12〜20px の範囲） */
   const PDF_PAGE_HEIGHT_SAFETY_PX = 16;
 
-  /** 1枚のPDFページに収められる最大の外寸（高さ）。css の .a4-sheet min-height:273mm と整合 */
   function getMaxPageHeightPx() {
     const d = document.createElement('div');
     d.className = 'a4-sheet';
@@ -132,12 +152,6 @@ async function savePDF() {
     return h;
   }
 
-  /**
-   * 1ページ分のDOM（ヘッダー・説明は先頭ページのみ、フッターは最終ページのみ）
-   * @param {HTMLElement[]} slice — 当ページに載せる .question-card（クローン元）
-   * @param {boolean} isFirst — 先頭ページ
-   * @param {boolean} isLastPageOfDoc — 当ページに元ドキュメント最後のカードが含まれる（＝フッター付与）
-   */
   function buildPageFragment(slice, isFirst, isLastPageOfDoc) {
     const wrap = document.createElement('div');
     wrap.className = `${sheet.className} pdf-export-surface pdf-capturing`.trim();
@@ -165,7 +179,6 @@ async function savePDF() {
     g.style.gap = gridCs ? gridCs.gap : '8px';
     slice.forEach((c) => g.appendChild(c.cloneNode(true)));
     wrap.appendChild(g);
-    /* 最終ページのみフッター（それ以外では絶対に付けない） */
     if (isLastPageOfDoc && footer) wrap.appendChild(footer.cloneNode(true));
     return wrap;
   }
@@ -257,6 +270,7 @@ async function savePDF() {
     host.remove();
   }
 }
+────────────────────────────────────────────────────────────────────────── */
 
 function dateStamp() {
   const d  = new Date();

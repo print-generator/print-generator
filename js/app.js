@@ -1,6 +1,6 @@
 /**
  * app.js  —  UI操作・モーダル・FAQ・印刷・PDF（印刷ダイアログ経由）
- * 特支プリント生成アプリ v2
+ * 家庭学習プリント生成 v2
  */
 
 /* ════════════════════════════════════════
@@ -76,6 +76,15 @@ function printSheet() {
    PDF 保存：印刷ダイアログ経由（Safari 含めベクターに近い出力）
    ※ 画像化 PDF（html2canvas + jsPDF）は下記 LEGACY にコメントアウトで保持
 ════════════════════════════════════════ */
+/** PDF保存の案内：狭い画面またはモバイルUAならスマホ向け文言 */
+function shouldUseMobilePdfHint() {
+  try {
+    if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) return true;
+  } catch (e) { /* ignore */ }
+  const ua = navigator.userAgent || '';
+  return /iPhone|iPod|iPad|Android/i.test(ua);
+}
+
 function savePDF() {
   const sheet = document.getElementById('printSheet');
 
@@ -89,7 +98,11 @@ function savePDF() {
     return;
   }
 
-  alert('このあと印刷画面が開きます。\n\n左下の PDF から「PDFに保存」を選んでください。');
+  const msgPc =
+    'このあと印刷画面が開きます。\n\n左下の「PDF」から「PDFに保存」を選んでください。';
+  const msgMobile =
+    'このあと印刷画面が開きます。\n\n保存または共有メニューからPDFとして保存してください。';
+  alert(shouldUseMobilePdfHint() ? msgMobile : msgPc);
   window.print();
 }
 

@@ -1,6 +1,6 @@
 /**
  * generator.js  —  プリントHTML生成エンジン
- * 特別支援学校向けプリント自動生成アプリ
+ * 家庭学習向けプリント自動生成
  */
 
 /* ── ユーティリティ ── */
@@ -40,7 +40,7 @@ function generatePrintHTML(content, level, count, showName, showDate) {
   const header = buildPrintHeader(meta, showName, showDate);
   const instr  = buildInstruction(meta);
   const footer = `<div class="print-footer">
-    <span>プリント自動生成アプリ｜特別支援学校向け</span>
+    <span>家庭学習プリント生成｜学習プリント自動作成ツール</span>
     <span>${today()}</span>
   </div>`;
 

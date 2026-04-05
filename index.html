@@ -47,12 +47,13 @@
     <div class="header-logo">
       <span class="logo-icon"><i class="fas fa-star"></i></span>
       <span class="logo-text">家庭学習プリント生成</span>
+      <span class="plan-badge plan-badge--free" id="planBadge" title="URLに ?plan=pro で有料版">無料版利用中</span>
     </div>
     <nav class="header-nav">
       <a href="#how-to-use" class="nav-link">使い方</a>
       <a href="#generator" class="nav-link">プリント作成</a>
       <a href="#faq" class="nav-link">FAQ</a>
-      <button class="nav-btn-premium" onclick="openPlanModal()">
+      <button type="button" class="nav-btn-premium" onclick="openPlanModal()">
         <i class="fas fa-crown"></i> 有料プラン
       </button>
     </nav>
@@ -196,6 +197,9 @@
   <div class="section-inner">
     <div class="section-label no-print">GENERATOR</div>
     <h2 class="section-title no-print">プリントを作成する</h2>
+    <p class="free-plan-notice no-print" id="freePlanNotice">
+      無料版は10問まで・生成5回までです
+    </p>
 
     <section class="control-panel no-print" id="controlPanel">
 
@@ -295,20 +299,37 @@
             <p class="setting-hint" id="customWordHint">有料プランで利用できます（生活単語・最大15文字）。</p>
           </div>
         </div>
+
+        <div class="settings-row settings-row--answer" id="answerSheetRow" hidden>
+          <div class="setting-item setting-item--full">
+            <label class="setting-label setting-label--checkbox" for="includeAnswersSheet">
+              <input type="checkbox" id="includeAnswersSheet" class="setting-checkbox" />
+              <span><i class="fas fa-key"></i> 解答ページを含める（印刷・PDFに解答一覧を追加）</span>
+            </label>
+            <p class="setting-hint">有料版のみ利用できます。</p>
+          </div>
+        </div>
+
+        <div class="one-click-row no-print" id="oneClickRow" hidden>
+          <button type="button" class="one-click-btn" id="oneClickGenerateBtn" onclick="runOneClickGenerate()">
+            <i class="fas fa-bolt"></i> ワンクリック自動生成
+          </button>
+          <p class="one-click-hint">内容・レベル・問題数を自動で選びます（有料版）</p>
+        </div>
       </div>
 
       <!-- 生成ボタン -->
       <div class="generate-section">
-        <button class="generate-btn" id="generateBtn" onclick="generatePrint()">
+        <button type="button" class="generate-btn" id="generateBtn" onclick="generatePrint()">
           <i class="fas fa-magic"></i>
           <span>プリントを生成する</span>
         </button>
         <p class="generate-quota" id="freeGenQuota" hidden>
-          本日の無料生成：残り 5 回（1日5回まで）
+          無料版の生成：残り 5 回（5回まで）
         </p>
         <p class="generate-note">
-          <i class="fas fa-lock"></i> 有料で最大30問・解答付き・上級などが使えます
-          <button class="link-btn" onclick="openPlanModal()">詳細を見る →</button>
+          <i class="fas fa-info-circle"></i> もっと使うには有料版（上級・30問・解答付きなど）
+          <button type="button" class="link-btn" onclick="openPlanModal()">詳しく見る</button>
         </p>
       </div>
 
@@ -471,7 +492,7 @@
     <div class="modal-header">
       <div>
         <span class="modal-badge"><i class="fas fa-crown"></i> PRO PLAN</span>
-        <h2 class="modal-title" id="modalTitle">有料プランの詳細</h2>
+        <h2 class="modal-title" id="modalTitle">有料版のご案内</h2>
       </div>
       <button class="modal-close" onclick="closePlanModal()" aria-label="閉じる">
         <i class="fas fa-times"></i>
@@ -480,55 +501,41 @@
 
     <!-- モーダル本体（スクロール可能） -->
     <div class="modal-body">
-      <p class="modal-intro">無料と有料の違いを、シンプルにまとめました。</p>
+      <p class="plan-modal-context" id="planModalContext" hidden></p>
 
-      <!-- プランカード -->
-      <div class="plan-cards">
+      <div class="plan-modal-pitch" data-modal-panel="pitch">
+        <h3 class="plan-pitch-title" id="planPitchHeading">有料版でできること</h3>
+        <ul class="plan-pitch-list">
+          <li>上級レベルが使える</li>
+          <li>15問／20問／25問／30問が選べる（＋4問から）</li>
+          <li>解答付きプリントが使える</li>
+          <li>問題生成回数が無制限</li>
+          <li>ワンクリック自動生成が使える</li>
+        </ul>
+        <p class="plan-pitch-line">有料版のお申し込みはLINEから</p>
+        <button type="button" class="plan-line-btn" onclick="openLineSignup()">
+          <i class="fab fa-line"></i> LINEでお申し込み・お問い合わせ
+        </button>
+        <p class="modal-note modal-note--soft">※ 月額・詳細は <a href="pricing.html">有料プランの説明ページ</a> もご覧ください。</p>
+      </div>
 
-        <div class="plan-card plan-free">
-          <div class="plan-card-header">
-            <h3 class="plan-name">無料プラン</h3>
-            <div class="plan-price">¥<span>0</span><small>/月</small></div>
-          </div>
-          <ul class="plan-features">
-            <li class="ok"><i class="fas fa-check"></i> プリント生成：1日5回まで</li>
-            <li class="ok"><i class="fas fa-check"></i> 問題数：最大10問</li>
-            <li class="ok"><i class="fas fa-check"></i> レベル：初級〜中級</li>
-            <li class="ok"><i class="fas fa-check"></i> 基本プリント（助詞・ひらがな・生活単語）</li>
-          </ul>
-          <button class="plan-btn plan-btn-current" disabled>現在のプラン</button>
-        </div>
-
-        <div class="plan-card plan-pro">
-          <div class="plan-popular-badge">⭐ おすすめ</div>
-          <div class="plan-card-header">
-            <h3 class="plan-name">有料プラン</h3>
-            <div class="plan-price">¥<span>500</span><small>/月</small></div>
-          </div>
-          <p class="plan-pro-tagline">考えずにすぐ使える。家庭学習プリントを1分で作成</p>
-          <ul class="plan-features">
-            <li class="ok"><i class="fas fa-check"></i> 問題数 最大30問</li>
-            <li class="ok"><i class="fas fa-check"></i> 上級レベル対応</li>
-            <li class="ok"><i class="fas fa-check"></i> カスタム単語登録（最大15文字）</li>
-            <li class="hot"><span class="plan-feature-ico" aria-hidden="true">🔥</span> 解答付きプリント生成</li>
-            <li class="hot"><span class="plan-feature-ico" aria-hidden="true">🔥</span> ワンクリックで新しい問題を自動作成</li>
-            <li class="ok"><i class="fas fa-check"></i> 広告なしで快適に利用可能</li>
-          </ul>
-          <button class="plan-btn plan-btn-pro" type="button" onclick="openPricingPage()">
-            <i class="fas fa-external-link-alt"></i> 詳細・お申し込みを見る
-          </button>
-        </div>
-
-      </div><!-- /plan-cards -->
-
-      <p class="modal-note">※ お申し込みは詳細ページの LINE からご案内します。</p>
+      <div class="plan-modal-active-pro" data-modal-panel="pro-active" hidden>
+        <p class="plan-active-lead"><i class="fas fa-check-circle"></i> 有料版のURL（<code>?plan=pro</code>）で利用中です。</p>
+        <ul class="plan-pitch-list">
+          <li>全機能がお使いいただけます</li>
+        </ul>
+        <p class="modal-note modal-note--soft">ご不明点は LINE からお問い合わせください。</p>
+        <button type="button" class="plan-line-btn plan-line-btn--ghost" onclick="openLineSignup()">
+          <i class="fab fa-line"></i> LINEを開く
+        </button>
+      </div>
     </div><!-- /modal-body -->
 
     <!-- モーダルフッター（固定） -->
     <div class="modal-footer">
-      <button class="modal-close-btn" onclick="closePlanModal()">閉じる</button>
-      <button class="modal-detail-btn" type="button" onclick="openPricingPage()">
-        <i class="fas fa-external-link-alt"></i> 有料プランの詳細を見る
+      <button type="button" class="modal-close-btn" onclick="closePlanModal()">閉じる</button>
+      <button type="button" class="modal-detail-btn" onclick="openPricingPage()">
+        <i class="fas fa-external-link-alt"></i> 有料プランの詳細ページ
       </button>
     </div>
 

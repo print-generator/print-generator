@@ -3,8 +3,11 @@
  * 家庭学習プリント生成 v2
  */
 
-/** 有料プラン利用時は true（決済連携前は false で無料制限を適用） */
-const isProUser = false;
+/** 有料版の案内・お申し込み（LINE） */
+const LINE_SIGNUP_URL = 'https://lin.ee/QrdTzUH';
+
+const planParam = new URLSearchParams(window.location.search).get('plan');
+const isProUser = planParam === 'pro';
 
 /* ════════════════════════════════════════
    選択状態
@@ -12,31 +15,13 @@ const isProUser = false;
 let selectedContent = 'joshi';
 let selectedLevel   = 'beginner';
 
-function getMaxQuestionCount() {
-  return isProUser ? 30 : 10;
-}
+/** 無料版のみカウント（累計5回まで） */
+const FREE_GENERATION_LIMIT = 5;
+const LS_FREE_GEN_TOTAL_KEY = 'homePrint_freeGenTotal_v2';
 
-/** 無料ユーザーの1日あたり生成上限 */
-const FREE_DAILY_GENERATION_LIMIT = 5;
-const LS_FREE_GEN_DATE_KEY = 'homePrint_freeGenDate';
-const LS_FREE_GEN_COUNT_KEY = 'homePrint_freeGenCount';
-
-function getTodayDateKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-/** 本日すでに使った無料生成回数（日付が変われば 0 にリセット） */
-function getFreeGenerationsUsedToday() {
+function getFreeGenerationsUsed() {
   try {
-    const today = getTodayDateKey();
-    const stored = localStorage.getItem(LS_FREE_GEN_DATE_KEY);
-    if (stored !== today) {
-      localStorage.setItem(LS_FREE_GEN_DATE_KEY, today);
-      localStorage.setItem(LS_FREE_GEN_COUNT_KEY, '0');
-      return 0;
-    }
-    return parseInt(localStorage.getItem(LS_FREE_GEN_COUNT_KEY) || '0', 10) || 0;
+    return parseInt(localStorage.getItem(LS_FREE_GEN_TOTAL_KEY) || '0', 10) || 0;
   } catch (e) {
     return 0;
   }
@@ -45,9 +30,11 @@ function getFreeGenerationsUsedToday() {
 function incrementFreeGenerationCount() {
   if (isProUser) return;
   try {
-    const used = getFreeGenerationsUsedToday();
-    localStorage.setItem(LS_FREE_GEN_COUNT_KEY, String(used + 1));
-  } catch (e) { /* ignore */ }
+    const used = getFreeGenerationsUsed();
+    localStorage.setItem(LS_FREE_GEN_TOTAL_KEY, String(used + 1));
+  } catch (e) {
+    /* ignore */
+  }
 }
 
 function updateFreeGenQuotaUI() {
@@ -58,31 +45,57 @@ function updateFreeGenQuotaUI() {
     return;
   }
   el.hidden = false;
-  const used = getFreeGenerationsUsedToday();
-  const left = Math.max(0, FREE_DAILY_GENERATION_LIMIT - used);
-  el.textContent = `本日の無料生成：残り ${left} 回（1日${FREE_DAILY_GENERATION_LIMIT}回まで）`;
+  const used = getFreeGenerationsUsed();
+  const left = Math.max(0, FREE_GENERATION_LIMIT - used);
+  el.textContent = `無料版の生成：残り ${left} 回（${FREE_GENERATION_LIMIT}回まで）`;
 }
 
-/** 問題数プルダウンをプランに合わせて再構築（4〜max、2問刻み） */
+function getFreeQuestionCountOptions() {
+  return [6, 8, 10];
+}
+
+function getProQuestionCountOptions() {
+  return [4, 6, 8, 10, 15, 20, 25, 30];
+}
+
+/** 問題数プルダウンをプランに合わせて再構築 */
 function refreshQuestionCountOptions() {
   const sel = document.getElementById('questionCount');
   if (!sel) return;
-  const max = getMaxQuestionCount();
+  const allowed = isProUser ? getProQuestionCountOptions() : getFreeQuestionCountOptions();
   let prev = parseInt(sel.value, 10);
   if (Number.isNaN(prev)) prev = 6;
-  if (prev > max) prev = max;
   const frag = document.createDocumentFragment();
-  for (let n = 4; n <= max; n += 2) {
+  allowed.forEach((n) => {
     const opt = document.createElement('option');
     opt.value = String(n);
     opt.textContent = `${n}問`;
     frag.appendChild(opt);
-  }
+  });
   sel.innerHTML = '';
   sel.appendChild(frag);
-  const allowed = [];
-  for (let n = 4; n <= max; n += 2) allowed.push(n);
-  sel.value = allowed.includes(prev) ? String(prev) : String(Math.min(10, max));
+  if (!allowed.includes(prev)) prev = allowed[0];
+  sel.value = String(prev);
+}
+
+function updatePlanBadge() {
+  const el = document.getElementById('planBadge');
+  if (!el) return;
+  el.textContent = isProUser ? '有料版利用中' : '無料版利用中';
+  el.classList.toggle('plan-badge--pro', isProUser);
+  el.classList.toggle('plan-badge--free', !isProUser);
+}
+
+function refreshAnswerSheetRow() {
+  const row = document.getElementById('answerSheetRow');
+  const cb = document.getElementById('includeAnswersSheet');
+  if (row) row.hidden = !isProUser;
+  if (cb && !isProUser) cb.checked = false;
+}
+
+function refreshOneClickRow() {
+  const row = document.getElementById('oneClickRow');
+  if (row) row.hidden = !isProUser;
 }
 
 function refreshCustomWordControl() {
@@ -128,10 +141,16 @@ function refreshLevelButtons() {
 }
 
 function applyPlanTierToUI() {
+  document.body.classList.toggle('plan-pro', isProUser);
+  document.body.classList.toggle('plan-free', !isProUser);
+  updatePlanBadge();
   refreshQuestionCountOptions();
   refreshCustomWordControl();
   refreshLevelButtons();
+  refreshAnswerSheetRow();
+  refreshOneClickRow();
   updateFreeGenQuotaUI();
+  syncModalPanelsForPlan();
 }
 
 /* ════════════════════════════════════════
@@ -152,8 +171,7 @@ document.querySelectorAll('.content-btn').forEach(btn => {
 document.querySelectorAll('.level-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     if (!isProUser && btn.dataset.value === 'advanced') {
-      alert('上級レベルは有料プランでご利用いただけます。');
-      openPlanModal();
+      openPlanModal('上級は有料版で利用可能です');
       return;
     }
     document.querySelectorAll('.level-btn').forEach(b => {
@@ -183,19 +201,23 @@ function generatePrint() {
   const showDate = document.getElementById('dateField').value === 'yes';
 
   if (!isProUser) {
-    if (getFreeGenerationsUsedToday() >= FREE_DAILY_GENERATION_LIMIT) {
-      alert('本日の無料生成回数の上限に達しました。有料プランをご利用ください。');
+    if (getFreeGenerationsUsed() >= FREE_GENERATION_LIMIT) {
+      openPlanModal('無料版の生成回数は5回までです。有料版をご利用ください。');
       return;
     }
-    if (count > 10) {
-      alert('無料プランでは問題数は最大10問までです。');
+    const allowedN = getFreeQuestionCountOptions();
+    if (!allowedN.includes(count)) {
+      openPlanModal('お選びの問題数は有料版でご利用いただけます。');
       return;
     }
     if (level === 'advanced') {
-      alert('上級レベルは有料プランでご利用いただけます。');
+      openPlanModal('上級は有料版で利用可能です');
       return;
     }
   }
+
+  const wantAnswers =
+    isProUser && document.getElementById('includeAnswersSheet')?.checked;
 
   let customWord = '';
   if (isProUser) {
@@ -212,7 +234,15 @@ function generatePrint() {
 
   setTimeout(() => {
     try {
-      const html  = generatePrintHTML(content, level, count, showName, showDate, customWord);
+      const html  = generatePrintHTML(
+        content,
+        level,
+        count,
+        showName,
+        showDate,
+        customWord,
+        wantAnswers
+      );
       const sheet = document.getElementById('printSheet');
       sheet.innerHTML = html;
 
@@ -563,13 +593,64 @@ function dateStamp() {
 /* ════════════════════════════════════════
    有料プランモーダル
 ════════════════════════════════════════ */
-function openPlanModal() {
+function openLineSignup() {
+  window.open(LINE_SIGNUP_URL, '_blank', 'noopener,noreferrer');
+}
+
+function syncModalPanelsForPlan() {
+  document.querySelectorAll('[data-modal-panel="pitch"]').forEach((el) => {
+    el.hidden = isProUser;
+  });
+  document.querySelectorAll('[data-modal-panel="pro-active"]').forEach((el) => {
+    el.hidden = !isProUser;
+  });
+}
+
+function openPlanModal(contextMessage) {
   const modal = document.getElementById('planModal');
+  const ctx = document.getElementById('planModalContext');
+  if (ctx) {
+    if (contextMessage) {
+      ctx.textContent = contextMessage;
+      ctx.hidden = false;
+    } else {
+      ctx.textContent = '';
+      ctx.hidden = true;
+    }
+  }
+  syncModalPanelsForPlan();
   modal.classList.add('open');
-  // body スクロール禁止
   document.body.style.overflow = 'hidden';
-  // フォーカス管理（アクセシビリティ）
   modal.querySelector('.modal-close').focus();
+}
+
+/** ワンクリック自動生成（有料版のみUI表示） */
+function runOneClickGenerate() {
+  if (!isProUser) {
+    openPlanModal('ワンクリック自動生成は有料版限定機能です。');
+    return;
+  }
+  const contents = ['joshi', 'hiragana', 'seikatsu'];
+  const levels = ['beginner', 'intermediate', 'advanced'];
+  const counts = getProQuestionCountOptions();
+  selectedContent = contents[Math.floor(Math.random() * contents.length)];
+  selectedLevel = levels[Math.floor(Math.random() * levels.length)];
+  document.querySelectorAll('.content-btn').forEach((b) => {
+    const on = b.dataset.value === selectedContent;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('.level-btn').forEach((b) => {
+    const on = b.dataset.value === selectedLevel;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  const qEl = document.getElementById('questionCount');
+  if (qEl) {
+    const n = counts[Math.floor(Math.random() * counts.length)];
+    qEl.value = String(n);
+  }
+  generatePrint();
 }
 
 function closePlanModal() {

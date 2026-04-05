@@ -35,7 +35,7 @@ function today() {
    プリントHTML全体を生成して返す
    （print-page 単位で組み、ブラウザ印刷のカード途中改ページを避ける）
 ───────────────────────────────────────────── */
-function generatePrintHTML(content, level, count, showName, showDate, customWord) {
+function generatePrintHTML(content, level, count, showName, showDate, customWord, includeAnswers) {
   const meta   = buildMeta(content, level);
   const header = buildPrintHeader(meta, showName, showDate);
   const instr  = buildInstruction(meta);
@@ -44,11 +44,42 @@ function generatePrintHTML(content, level, count, showName, showDate, customWord
     <span>${today()}</span>
   </div>`;
 
-  const cardHtmls = buildQuestionBody(content, level, count, customWord);
+  const { cardHtmls, answers } = buildQuestionBodyStructured(content, level, count, customWord);
   const perPage   = getCardsPerPage(content, level);
   const chunks    = chunkCardsForPrint(cardHtmls, perPage);
+  const withAnswers = !!includeAnswers && answers.length > 0;
 
-  return wrapPrintPagesHtml(chunks, header, instr, footer);
+  let html = wrapPrintPagesHtml(chunks, header, instr, footer, !withAnswers);
+  if (withAnswers) {
+    html += wrapAnswerPagesHtml(answers, meta, footer);
+  }
+  return html;
+}
+
+function escapeHtmlPrint(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** 解答専用ページ（問題ページの後ろに追加） */
+function wrapAnswerPagesHtml(answers, meta, footer) {
+  const items = answers
+    .map(
+      (a, i) =>
+        `<li class="answer-sheet-item"><span class="answer-sheet-qnum">${i + 1}</span> ${escapeHtmlPrint(a)}</li>`
+    )
+    .join('');
+  const head = `${meta.emoji} ${escapeHtmlPrint(meta.label)}`;
+  return `<div class="print-page print-page--answer print-page--last">
+    <div class="answer-sheet">
+      <h2 class="answer-sheet-title">📋 解答（${head}）</h2>
+      <ol class="answer-sheet-list">${items}</ol>
+    </div>
+    ${footer}
+  </div>`;
 }
 
 /**
@@ -94,8 +125,10 @@ function chunkCardsForPrint(cardHtmls, perPage) {
 
 /**
  * ページごとに print-page でラップ。先頭のみ header+instruction、最終のみ footer
+ * @param {boolean} putFooterOnLastQuestionPage 解答ページを別途付ける場合は false（フッターは解答側へ）
  */
-function wrapPrintPagesHtml(chunks, header, instr, footer) {
+function wrapPrintPagesHtml(chunks, header, instr, footer, putFooterOnLastQuestionPage) {
+  if (putFooterOnLastQuestionPage === undefined) putFooterOnLastQuestionPage = true;
   return chunks
     .map((chunk, i, arr) => {
       const isFirst = i === 0;
@@ -110,7 +143,7 @@ function wrapPrintPagesHtml(chunks, header, instr, footer) {
       let html = `<div class="${cls}">`;
       if (isFirst) html += header + instr;
       html += `<div class="questions-grid">${chunk.join('')}</div>`;
-      if (isLast) html += footer;
+      if (isLast && putFooterOnLastQuestionPage) html += footer;
       html += `</div>`;
       return html;
     })
@@ -186,9 +219,8 @@ function buildInstruction(meta) {
 
 /* ─────────────────────────────────────────────
    問題本体ビルダー（コンテンツ×レベル）
-   戻り値: question-card の HTML 文字列の配列（順序は通し番号）
 ───────────────────────────────────────────── */
-function buildQuestionBody(content, level, count, customWord) {
+function buildQuestionBodyStructured(content, level, count, customWord) {
   const cw = typeof customWord === 'string' && customWord.trim()
     ? customWord.trim().slice(0, 15)
     : '';
@@ -212,12 +244,18 @@ function buildQuestionBody(content, level, count, customWord) {
   return builders[content][level](count, content === 'seikatsu' ? cw : '');
 }
 
+/** @deprecated 直接は使わず buildQuestionBodyStructured を優先 */
+function buildQuestionBody(content, level, count, customWord) {
+  return buildQuestionBodyStructured(content, level, count, customWord).cardHtmls;
+}
+
 /* ====================================================
    助詞
    ==================================================== */
 
 function buildJoshiBeginner(count, _cw) {
   const data  = pickRandom(APP_DATA.joshi.beginner, count);
+  const answers = data.map((q) => q.answer);
   const cards = data.map((q, i) => {
     const traceHtml = `
       <div class="trace-area">
@@ -231,11 +269,12 @@ function buildJoshiBeginner(count, _cw) {
       </div>`;
     return questionCard(i + 1, traceHtml);
   });
-  return cards;
+  return { cardHtmls: cards, answers };
 }
 
 function buildJoshiIntermediate(count, _cw) {
   const data  = pickRandom(APP_DATA.joshi.intermediate, count);
+  const answers = data.map((q) => q.answer);
   const cards = data.map((q, i) => {
     const choicesHtml = q.choices.map(c =>
       `<span class="choice-item">${c}</span>`
@@ -248,11 +287,12 @@ function buildJoshiIntermediate(count, _cw) {
       </div>`;
     return questionCard(i + 1, inner);
   });
-  return cards;
+  return { cardHtmls: cards, answers };
 }
 
 function buildJoshiAdvanced(count, _cw) {
   const data  = pickRandomAllowRepeat(APP_DATA.joshi.advanced, count);
+  const answers = data.map((q) => q.answer || '');
   const cards = data.map((q, i) => {
     const inner = `
       <div class="desc-sentence">${q.sentence}</div>
@@ -260,7 +300,7 @@ function buildJoshiAdvanced(count, _cw) {
       <div class="answer-line"></div>`;
     return questionCard(i + 1, inner);
   });
-  return cards;
+  return { cardHtmls: cards, answers };
 }
 
 /* ====================================================
@@ -269,6 +309,7 @@ function buildJoshiAdvanced(count, _cw) {
 
 function buildHiraganaBeginner(count, _cw) {
   const sets = pickRandomAllowRepeat(APP_DATA.hiragana.beginner_sets, count);
+  const answers = sets.map((set) => `${set.group}：${set.chars.join('・')}`);
   const cards = sets.map((set, i) => {
     const cellsHtml = set.chars.map(c => `
       <div class="hira-cell">
@@ -280,11 +321,12 @@ function buildHiraganaBeginner(count, _cw) {
       <div class="hiragana-grid">${cellsHtml}</div>`;
     return questionCard(i + 1, inner);
   });
-  return cards;
+  return { cardHtmls: cards, answers };
 }
 
 function buildHiraganaIntermediate(count, _cw) {
   const data  = pickRandom(APP_DATA.hiragana.intermediate, count);
+  const answers = data.map((q) => q.word);
   const cards = data.map((q, i) => {
     const choicesHtml = q.choices.map(c =>
       `<span class="choice-item">${c}</span>`
@@ -299,11 +341,12 @@ function buildHiraganaIntermediate(count, _cw) {
       </div>`;
     return questionCard(i + 1, inner);
   });
-  return cards;
+  return { cardHtmls: cards, answers };
 }
 
 function buildHiraganaAdvanced(count, _cw) {
   const data  = pickRandom(APP_DATA.hiragana.advanced, count);
+  const answers = data.map((q) => q.answer);
   const cards = data.map((q, i) => {
     const boxes = q.answer.split('').map(() =>
       '<div class="write-box write-box-tight"></div>'
@@ -314,7 +357,7 @@ function buildHiraganaAdvanced(count, _cw) {
       <div class="adv-write-row">${boxes}</div>`;
     return questionCard(i + 1, inner);
   });
-  return cards;
+  return { cardHtmls: cards, answers };
 }
 
 /* ====================================================
@@ -329,6 +372,7 @@ function buildSeikatsuBeginner(count, customWord) {
   } else {
     data = pickRandom(APP_DATA.seikatsu.words, count);
   }
+  const answers = data.map((q) => q.word);
   const cards = data.map((q, i) => {
     const boxes = q.word.split('').map(c =>
       `<div class="seikatsu-char-col">
@@ -346,7 +390,7 @@ function buildSeikatsuBeginner(count, customWord) {
       </div>`;
     return questionCard(i + 1, inner);
   });
-  return cards;
+  return { cardHtmls: cards, answers };
 }
 
 function buildSeikatsuIntermediate(count, customWord) {
@@ -357,6 +401,7 @@ function buildSeikatsuIntermediate(count, customWord) {
   } else {
     data = pickRandom(APP_DATA.seikatsu.words, count);
   }
+  const answers = data.map((q) => q.word);
   const cards = data.map((q, i) => {
     const choices = APP_DATA.seikatsu.getChoices(q.word);
     const choicesHtml = choices.map(c =>
@@ -372,7 +417,7 @@ function buildSeikatsuIntermediate(count, customWord) {
       </div>`;
     return questionCard(i + 1, inner);
   });
-  return cards;
+  return { cardHtmls: cards, answers };
 }
 
 function buildSeikatsuAdvanced(count, customWord) {
@@ -383,6 +428,7 @@ function buildSeikatsuAdvanced(count, customWord) {
   } else {
     data = pickRandom(APP_DATA.seikatsu.words, count);
   }
+  const answers = data.map((q) => q.word);
   const cards = data.map((q, i) => {
     const boxes = q.word.split('').map(() =>
       '<div class="write-box write-box-tight"></div>'
@@ -397,7 +443,7 @@ function buildSeikatsuAdvanced(count, customWord) {
       </div>`;
     return questionCard(i + 1, inner);
   });
-  return cards;
+  return { cardHtmls: cards, answers };
 }
 
 /* ── 共通：問題カード ── */

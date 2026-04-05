@@ -13,7 +13,54 @@ let selectedContent = 'joshi';
 let selectedLevel   = 'beginner';
 
 function getMaxQuestionCount() {
-  return isProUser ? 50 : 10;
+  return isProUser ? 30 : 10;
+}
+
+/** 無料ユーザーの1日あたり生成上限 */
+const FREE_DAILY_GENERATION_LIMIT = 5;
+const LS_FREE_GEN_DATE_KEY = 'homePrint_freeGenDate';
+const LS_FREE_GEN_COUNT_KEY = 'homePrint_freeGenCount';
+
+function getTodayDateKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** 本日すでに使った無料生成回数（日付が変われば 0 にリセット） */
+function getFreeGenerationsUsedToday() {
+  try {
+    const today = getTodayDateKey();
+    const stored = localStorage.getItem(LS_FREE_GEN_DATE_KEY);
+    if (stored !== today) {
+      localStorage.setItem(LS_FREE_GEN_DATE_KEY, today);
+      localStorage.setItem(LS_FREE_GEN_COUNT_KEY, '0');
+      return 0;
+    }
+    return parseInt(localStorage.getItem(LS_FREE_GEN_COUNT_KEY) || '0', 10) || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function incrementFreeGenerationCount() {
+  if (isProUser) return;
+  try {
+    const used = getFreeGenerationsUsedToday();
+    localStorage.setItem(LS_FREE_GEN_COUNT_KEY, String(used + 1));
+  } catch (e) { /* ignore */ }
+}
+
+function updateFreeGenQuotaUI() {
+  const el = document.getElementById('freeGenQuota');
+  if (!el) return;
+  if (isProUser) {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  const used = getFreeGenerationsUsedToday();
+  const left = Math.max(0, FREE_DAILY_GENERATION_LIMIT - used);
+  el.textContent = `本日の無料生成：残り ${left} 回（1日${FREE_DAILY_GENERATION_LIMIT}回まで）`;
 }
 
 /** 問題数プルダウンをプランに合わせて再構築（4〜max、2問刻み） */
@@ -84,6 +131,7 @@ function applyPlanTierToUI() {
   refreshQuestionCountOptions();
   refreshCustomWordControl();
   refreshLevelButtons();
+  updateFreeGenQuotaUI();
 }
 
 /* ════════════════════════════════════════
@@ -135,6 +183,10 @@ function generatePrint() {
   const showDate = document.getElementById('dateField').value === 'yes';
 
   if (!isProUser) {
+    if (getFreeGenerationsUsedToday() >= FREE_DAILY_GENERATION_LIMIT) {
+      alert('本日の無料生成回数の上限に達しました。有料プランをご利用ください。');
+      return;
+    }
     if (count > 10) {
       alert('無料プランでは問題数は最大10問までです。');
       return;
@@ -167,6 +219,8 @@ function generatePrint() {
       const section = document.getElementById('previewSection');
       section.style.display = 'block';
       section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      incrementFreeGenerationCount();
+      updateFreeGenQuotaUI();
     } catch (e) {
       console.error('生成エラー:', e);
       alert('プリントの生成中にエラーが発生しました。再度お試しください。');
@@ -444,9 +498,9 @@ function closePlanModalOutside(event) {
   }
 }
 
-/** LINE 登録（仮URL・本番で差し替え） */
-function goPro() {
-  window.open('https://lin.ee/XXXXXXXX', '_blank', 'noopener,noreferrer');
+/** 有料プラン詳細ページへ */
+function openPricingPage() {
+  window.location.href = 'pricing.html';
 }
 
 /* ════════════════════════════════════════

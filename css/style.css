@@ -527,6 +527,13 @@ body {
   outline: 3px solid var(--primary-soft);
   outline-offset: 3px;
 }
+.generate-quota {
+  font-size: .8rem;
+  color: var(--text-sub);
+  margin: 0 0 4px;
+  text-align: center;
+  line-height: 1.45;
+}
 .generate-note {
   font-size: .82rem;
   color: var(--text-sub);
@@ -965,6 +972,93 @@ body {
 .plan-features li.ng { color: #bbb; }
 .plan-features li.ok i { color: var(--accent); flex-shrink: 0; margin-top: 3px; }
 .plan-features li.ng i { color: #ccc; flex-shrink: 0; margin-top: 3px; }
+.plan-features li.hot {
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+.plan-feature-ico {
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+/* 有料プラン詳細（単体ページ） */
+.pricing-standalone {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+.pricing-standalone .pricing-back {
+  margin-bottom: 20px;
+}
+.pricing-standalone .pricing-back a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+.pricing-standalone .pricing-back a:hover {
+  text-decoration: underline;
+}
+.pricing-standalone h1 {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: var(--text);
+  margin: 0 0 16px;
+  letter-spacing: .04em;
+}
+.pricing-standalone .pricing-lead {
+  font-size: .95rem;
+  line-height: 1.7;
+  color: var(--text-sub);
+  margin-bottom: 28px;
+}
+.pricing-block {
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  background: #f8fafc;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.pricing-block h2 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+.pricing-block ul {
+  margin: 0;
+  padding-left: 1.2em;
+  font-size: .9rem;
+  line-height: 1.65;
+  color: var(--text);
+}
+.pricing-line-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #06c755 0%, #05a546 100%);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-family: var(--font);
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(6, 199, 85, 0.35);
+  transition: transform .2s, box-shadow .2s;
+}
+.pricing-line-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(6, 199, 85, 0.45);
+  color: #fff;
+}
+.pricing-line-btn:focus-visible {
+  outline: 3px solid var(--primary-soft);
+  outline-offset: 3px;
+}
 .plan-btn {
   width: 100%; padding: 12px; border: none; border-radius: 50px;
   font-family: var(--font); font-size: .95rem; font-weight: 700; cursor: pointer; transition: all .2s;

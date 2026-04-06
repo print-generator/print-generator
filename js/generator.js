@@ -13,17 +13,31 @@ function shuffle(arr) {
   return a;
 }
 
+/**
+ * プールから重複なしで最大 n 件（data.js の各プールは最大出題数以上ある想定）
+ */
 function pickRandom(arr, n) {
-  return shuffle(arr).slice(0, n);
+  if (!arr || !arr.length || n <= 0) return [];
+  const k = Math.min(n, arr.length);
+  return shuffle([...arr]).slice(0, k);
 }
 
-/** プールをシャッフルして繰り返し連結し、ちょうど n 件取り出す（行データが少ないとき用） */
-function pickRandomAllowRepeat(pool, n) {
-  const rows = [];
-  while (rows.length < n) {
-    rows.push(...shuffle([...pool]));
+const LS_LAST_PRINT_SIG = 'homePrint_lastPrintSig';
+
+function readLastPrintSig() {
+  try {
+    return sessionStorage.getItem(LS_LAST_PRINT_SIG) || '';
+  } catch (e) {
+    return '';
   }
-  return rows.slice(0, n);
+}
+
+function writeLastPrintSig(sig) {
+  try {
+    sessionStorage.setItem(LS_LAST_PRINT_SIG, sig);
+  } catch (e) {
+    /* ignore */
+  }
 }
 
 function today() {
@@ -44,7 +58,17 @@ function generatePrintHTML(content, level, count, showName, showDate, customWord
     <span>${today()}</span>
   </div>`;
 
-  const { cardHtmls, answers } = buildQuestionBodyStructured(content, level, count, customWord);
+  const lastSig = readLastPrintSig();
+  let result = buildQuestionBodyStructured(content, level, count, customWord);
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const sig = result.answers.join('\u0001');
+    if (sig !== lastSig || attempt === 23) {
+      writeLastPrintSig(sig);
+      break;
+    }
+    result = buildQuestionBodyStructured(content, level, count, customWord);
+  }
+  const { cardHtmls, answers } = result;
   const perPage   = getCardsPerPage(content, level);
   const chunks    = chunkCardsForPrint(cardHtmls, perPage);
   const withAnswers = !!includeAnswers && answers.length > 0;
@@ -291,7 +315,7 @@ function buildJoshiIntermediate(count, _cw) {
 }
 
 function buildJoshiAdvanced(count, _cw) {
-  const data  = pickRandomAllowRepeat(APP_DATA.joshi.advanced, count);
+  const data  = pickRandom(APP_DATA.joshi.advanced, count);
   const answers = data.map((q) => q.answer || '');
   const cards = data.map((q, i) => {
     const inner = `
@@ -308,7 +332,7 @@ function buildJoshiAdvanced(count, _cw) {
    ==================================================== */
 
 function buildHiraganaBeginner(count, _cw) {
-  const sets = pickRandomAllowRepeat(APP_DATA.hiragana.beginner_sets, count);
+  const sets = pickRandom(APP_DATA.hiragana.beginner_sets, count);
   const answers = sets.map((set) => `${set.group}：${set.chars.join('・')}`);
   const cards = sets.map((set, i) => {
     const cellsHtml = set.chars.map(c => `
@@ -367,7 +391,8 @@ function buildHiraganaAdvanced(count, _cw) {
 function buildSeikatsuBeginner(count, customWord) {
   let data;
   if (customWord) {
-    const rest = pickRandom(APP_DATA.seikatsu.words, Math.max(0, count - 1));
+    const pool = APP_DATA.seikatsu.words.filter((w) => w.word !== customWord);
+    const rest = pickRandom(pool, Math.max(0, count - 1));
     data = [{ word: customWord, emoji: '✏️', category: 'カスタム' }, ...rest];
   } else {
     data = pickRandom(APP_DATA.seikatsu.words, count);
@@ -396,7 +421,8 @@ function buildSeikatsuBeginner(count, customWord) {
 function buildSeikatsuIntermediate(count, customWord) {
   let data;
   if (customWord) {
-    const rest = pickRandom(APP_DATA.seikatsu.words, Math.max(0, count - 1));
+    const pool = APP_DATA.seikatsu.words.filter((w) => w.word !== customWord);
+    const rest = pickRandom(pool, Math.max(0, count - 1));
     data = [{ word: customWord, emoji: '✏️', category: 'カスタム' }, ...rest];
   } else {
     data = pickRandom(APP_DATA.seikatsu.words, count);
@@ -423,7 +449,8 @@ function buildSeikatsuIntermediate(count, customWord) {
 function buildSeikatsuAdvanced(count, customWord) {
   let data;
   if (customWord) {
-    const rest = pickRandom(APP_DATA.seikatsu.words, Math.max(0, count - 1));
+    const pool = APP_DATA.seikatsu.words.filter((w) => w.word !== customWord);
+    const rest = pickRandom(pool, Math.max(0, count - 1));
     data = [{ word: customWord, emoji: '✏️', category: 'カスタム' }, ...rest];
   } else {
     data = pickRandom(APP_DATA.seikatsu.words, count);

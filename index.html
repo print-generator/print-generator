@@ -53,8 +53,10 @@
       <a href="#how-to-use" class="nav-link">使い方</a>
       <a href="#generator" class="nav-link">プリント作成</a>
       <a href="#faq" class="nav-link">FAQ</a>
+      <a href="pricing.html" class="nav-link nav-link--sub">説明</a>
+      <a href="index.html?plan=pro" class="nav-link nav-link--pro">有料版</a>
       <button type="button" class="nav-btn-premium" onclick="openPlanModal()">
-        <i class="fas fa-crown"></i> 有料プラン
+        <i class="fas fa-crown"></i> 機能
       </button>
     </nav>
   </div>
@@ -366,9 +368,15 @@
       <h2 class="plan-cta-title">もっとできることを増やしませんか？</h2>
       <p class="plan-cta-desc">月額500円で、解答付き・最大30問・上級レベルまで。考えずにすぐ使える家庭学習プリントを。</p>
     </div>
-    <div class="plan-cta-right">
-      <button class="plan-cta-btn" onclick="openPlanModal()">
-        <i class="fas fa-crown"></i> 有料プランを見る
+    <div class="plan-cta-right plan-cta-buttons">
+      <button type="button" class="plan-cta-btn plan-cta-btn--secondary" onclick="openPricingPage()">
+        <i class="fas fa-file-alt"></i> 説明・料金を見る
+      </button>
+      <button type="button" class="plan-cta-btn" onclick="openProAppPage()">
+        <i class="fas fa-crown"></i> 有料版を開く
+      </button>
+      <button type="button" class="plan-cta-btn plan-cta-btn--ghost" onclick="openPlanModal()">
+        機能一覧
       </button>
       <p class="plan-cta-note">月額 ¥500（税込表記は運用に合わせてください）</p>
     </div>
@@ -470,7 +478,8 @@
       <a href="#how-to-use">使い方</a>
       <a href="#generator">プリント作成</a>
       <a href="#faq">FAQ</a>
-      <a href="pricing.html">有料プラン</a>
+      <a href="pricing.html">有料プランの説明</a>
+      <a href="index.html?plan=pro" class="footer-link-pro">有料版を開く</a>
     </div>
     <p class="footer-copy">© 2026 家庭学習プリント生成　制作：あなたの名前</p>
   </div>
@@ -516,7 +525,7 @@
         <button type="button" class="plan-line-btn" onclick="openLineSignup()">
           <i class="fab fa-line"></i> LINEでお申し込み・お問い合わせ
         </button>
-        <p class="modal-note modal-note--soft">※ 月額・詳細は <a href="pricing.html">有料プランの説明ページ</a> もご覧ください。</p>
+        <p class="modal-note modal-note--soft">※ 料金・比較は <a href="pricing.html">有料プランの説明ページ</a>。プリント作成は「有料版を開く」から。</p>
       </div>
 
       <div class="plan-modal-active-pro" data-modal-panel="pro-active" hidden>
@@ -532,10 +541,13 @@
     </div><!-- /modal-body -->
 
     <!-- モーダルフッター（固定） -->
-    <div class="modal-footer">
+    <div class="modal-footer modal-footer--plan">
       <button type="button" class="modal-close-btn" onclick="closePlanModal()">閉じる</button>
       <button type="button" class="modal-detail-btn" onclick="openPricingPage()">
-        <i class="fas fa-external-link-alt"></i> 有料プランの詳細ページ
+        <i class="fas fa-file-alt"></i> 有料プランの詳細を見る
+      </button>
+      <button type="button" class="modal-pro-app-btn" onclick="openProAppPage()">
+        <i class="fas fa-crown"></i> 有料版を開く
       </button>
     </div>
 

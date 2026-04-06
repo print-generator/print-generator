@@ -666,9 +666,17 @@ function closePlanModalOutside(event) {
   }
 }
 
-/** 有料プラン詳細ページへ */
+/** 有料プランの説明ページ（料金・比較・LINE） */
 function openPricingPage() {
   window.location.href = 'pricing.html';
+}
+
+/**
+ * 実際に有料機能を使うページ（index に ?plan=pro）
+ * 同一フォルダの index からの遷移を想定
+ */
+function openProAppPage() {
+  window.location.href = 'index.html?plan=pro';
 }
 
 /* ════════════════════════════════════════

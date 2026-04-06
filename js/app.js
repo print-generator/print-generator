@@ -959,12 +959,9 @@ function openPricingPage() {
   window.location.href = 'pricing.html';
 }
 
-/**
- * 実際に有料機能を使うページ（index に ?plan=pro）
- * 同一フォルダの index からの遷移を想定
- */
+/** 有料版の利用申込（LINE） */
 function openProAppPage() {
-  window.location.href = 'index.html?plan=pro';
+  openLineSignup();
 }
 
 /* ════════════════════════════════════════

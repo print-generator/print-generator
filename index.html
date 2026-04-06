@@ -238,7 +238,7 @@
       </div>
 
       <!-- ステップ2 -->
-      <div class="step-card">
+      <div class="step-card" id="levelStepCard">
         <div class="step-header">
           <span class="step-badge">STEP 2</span>
           <h3 class="step-title">レベルを選ぼう</h3>
@@ -258,6 +258,25 @@
             <span class="option-icon">🌟</span>
             <span class="option-label">上級</span>
             <span class="option-desc">記述問題</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="step-card" id="customModeStepCard" hidden>
+        <div class="step-header">
+          <span class="step-badge">STEP 2</span>
+          <h3 class="step-title">カスタム問題の形式</h3>
+        </div>
+        <div class="option-grid option-grid--custom-mode" id="customModeOptions">
+          <button type="button" class="option-btn custom-mode-btn active" data-value="trace" aria-pressed="true">
+            <span class="option-icon">✍️</span>
+            <span class="option-label">なぞり書き</span>
+            <span class="option-desc">薄い文字をなぞる</span>
+          </button>
+          <button type="button" class="option-btn custom-mode-btn" data-value="copy" aria-pressed="false">
+            <span class="option-icon">📝</span>
+            <span class="option-label">試写</span>
+            <span class="option-desc">見て書きうつす</span>
           </button>
         </div>
       </div>
@@ -301,11 +320,14 @@
         </div>
         <div class="settings-row settings-row--custom" id="customWordRow" hidden>
           <div class="setting-item setting-item--full">
-            <label for="customWord" class="setting-label">
-              <i class="fas fa-pen"></i> カスタム問題の単語
+            <label for="customWord1" class="setting-label">
+              <i class="fas fa-pen"></i> カスタム問題の単語（最大8個）
             </label>
-            <input type="text" id="customWord" class="setting-input" maxlength="15" autocomplete="off" placeholder="例：れんしゅう" disabled aria-describedby="customWordHint" />
-            <p class="setting-hint" id="customWordHint">「カスタム問題」を選ぶと入力できます（最大15文字）。</p>
+            <div id="customWordsList" class="custom-words-list"></div>
+            <button type="button" class="custom-add-btn" id="addCustomWordBtn">
+              <i class="fas fa-plus"></i> 単語を追加
+            </button>
+            <p class="setting-hint" id="customWordHint">1単語15文字まで。入力した単語はすべて問題に反映されます。</p>
           </div>
         </div>
 

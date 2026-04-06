@@ -449,6 +449,9 @@ body {
     grid-template-columns: repeat(4, 1fr);
   }
 }
+.option-grid--custom-mode {
+  grid-template-columns: repeat(2, 1fr);
+}
 .content-btn--custom {
   position: relative;
   padding-top: 26px;
@@ -519,6 +522,44 @@ body.plan-free .content-btn--custom:not(.active) {
 .settings-row--custom .setting-item--full {
   flex-direction: column;
   align-items: stretch;
+}
+.custom-words-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.custom-word-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.custom-word-row .custom-word-input {
+  flex: 1;
+}
+.custom-add-btn,
+.custom-remove-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 10px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 9px 12px;
+}
+.custom-add-btn {
+  margin-top: 2px;
+  align-self: flex-start;
+}
+.custom-add-btn:hover,
+.custom-remove-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.custom-add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .setting-item--full {
   max-width: 100%;
@@ -1503,6 +1544,9 @@ body.lp-pricing-page {
   .header-nav .nav-link { display: none; }
   .option-grid { grid-template-columns: repeat(2,1fr); gap: 8px; padding: 14px 12px; }
   .option-grid.option-grid--four { grid-template-columns: repeat(2, 1fr); }
+  .option-grid.option-grid--custom-mode { grid-template-columns: repeat(2, 1fr); }
+  .custom-word-row { flex-direction: column; align-items: stretch; }
+  .custom-remove-btn { width: 100%; }
   .option-btn { padding: 14px 6px; }
   .option-icon { font-size: 1.6rem; }
   .option-label { font-size: .85rem; }

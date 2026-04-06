@@ -49,7 +49,7 @@ function today() {
    プリントHTML全体を生成して返す
    （print-page 単位で組み、ブラウザ印刷のカード途中改ページを避ける）
 ───────────────────────────────────────────── */
-function generatePrintHTML(content, level, count, showName, showDate, customWord, includeAnswers) {
+function generatePrintHTML(content, level, count, showName, showDate, customPayload, includeAnswers) {
   const meta   = buildMeta(content, level);
   const header = buildPrintHeader(meta, showName, showDate);
   const instr  = buildInstruction(meta);
@@ -59,14 +59,14 @@ function generatePrintHTML(content, level, count, showName, showDate, customWord
   </div>`;
 
   const lastSig = readLastPrintSig();
-  let result = buildQuestionBodyStructured(content, level, count, customWord);
+  let result = buildQuestionBodyStructured(content, level, count, customPayload);
   for (let attempt = 0; attempt < 24; attempt++) {
     const sig = result.answers.join('\u0001');
     if (sig !== lastSig || attempt === 23) {
       writeLastPrintSig(sig);
       break;
     }
-    result = buildQuestionBodyStructured(content, level, count, customWord);
+    result = buildQuestionBodyStructured(content, level, count, customPayload);
   }
   const { cardHtmls, answers } = result;
   const perPage   = getCardsPerPage(content, level);
@@ -236,9 +236,9 @@ function buildInstruction(meta) {
       advanced:     'えを みて ことばを かきましょう。',
     },
     custom: {
-      beginner:     'じぶんで いれた ことばを なぞったり かきましょう。',
-      intermediate: 'じぶんの ことばが はいった もんだいです。',
-      advanced:     'じぶんの ことばを かいたり、（　）に あてはまる もじを かきましょう。',
+      beginner:     'じぶんで いれた ことばを なぞって かきましょう。',
+      intermediate: 'じぶんで いれた ことばを なぞって かきましょう。',
+      advanced:     'ことばを みて、したの ますに ししゃ しましょう。',
     },
   };
   const text = instructions[meta.content][meta.level];
@@ -250,20 +250,20 @@ function buildInstruction(meta) {
 /* ─────────────────────────────────────────────
    問題本体ビルダー（コンテンツ×レベル）
 ───────────────────────────────────────────── */
-function buildQuestionBodyStructured(content, level, count, customWord) {
-  const cw = typeof customWord === 'string' && customWord.trim()
-    ? customWord.trim().slice(0, 15)
-    : '';
+function buildQuestionBodyStructured(content, level, count, customPayload) {
   if (content === 'custom') {
-    if (!cw) {
+    const words = Array.isArray(customPayload?.words)
+      ? customPayload.words
+          .map((w) => String(w || '').trim().slice(0, 15))
+          .filter(Boolean)
+      : [];
+    const mode = customPayload?.mode === 'copy' ? 'copy' : 'trace';
+    if (!words.length) {
       return { cardHtmls: [], answers: [] };
     }
-    const customBuilders = {
-      beginner:     buildCustomBeginner,
-      intermediate: buildCustomIntermediate,
-      advanced:     buildCustomAdvanced,
-    };
-    return customBuilders[level](count, cw);
+    return mode === 'copy'
+      ? buildCustomCopy(count, words)
+      : buildCustomTrace(count, words);
   }
   const builders = {
     joshi: {
@@ -470,155 +470,65 @@ function buildSeikatsuAdvanced(count, _cw) {
 }
 
 /* ====================================================
-   カスタム問題（入力語を必ず含む・有料版UIからのみ）
+   カスタム問題（入力語をすべて出題）
    ==================================================== */
-
-const CUSTOM_HIRAGANA_POOL =
-  'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
-
-function randomHiraganaCharsNot(c, n) {
-  const pool = [...CUSTOM_HIRAGANA_POOL].filter((x) => x !== c);
-  return pickRandom(pool, n);
+function normalizeCustomWords(words) {
+  return (Array.isArray(words) ? words : [])
+    .map((w) => String(w || '').trim().slice(0, 15))
+    .filter(Boolean);
 }
 
-/** 入力語を文に入れた助詞テンプレ（中級は3択、上級は記述） */
-const CUSTOM_PARTICLE_TEMPLATES = [
-  { sentence: (w) => `（　）に ${w} を おきます。`, answer: 'に' },
-  { sentence: (w) => `（　）で ${w} を つかいます。`, answer: 'で' },
-  { sentence: (w) => `（　）へ ${w} を もっていきます。`, answer: 'へ' },
-  { sentence: (w) => `（　）と ${w} を かきます。`, answer: 'と' },
-  { sentence: (w) => `わたしは ${w}（　）すきです。`, answer: 'が' },
-];
-
-function wrongParticleChoices(correct) {
-  const all = ['は', 'が', 'を', 'に', 'で', 'へ', 'と', 'も', 'や', 'の'];
-  const wrong = pickRandom(
-    all.filter((x) => x !== correct),
-    2
-  );
-  return shuffle([correct, ...wrong]);
+function buildCustomWordSequence(words, count) {
+  const base = normalizeCustomWords(words);
+  if (!base.length) return [];
+  const total = Math.max(count, base.length);
+  const seq = [];
+  for (let i = 0; i < total; i++) {
+    seq.push(base[i % base.length]);
+  }
+  return seq;
 }
 
-function buildCustomBeginner(count, word) {
-  const cards = [];
-  const answers = [];
-  const w = word;
-  const ew = escapeHtmlPrint(w);
-  const boxes0 = [...w].map((c) =>
-    `<div class="seikatsu-char-col">
-      <span class="seikatsu-trace">${escapeHtmlPrint(c)}</span>
-      <div class="hira-write"></div>
-    </div>`
-  ).join('');
-  cards.push(questionCard(1, `
-    <div class="emoji-question-row emoji-question-row--tight">
-      <span class="emoji-large">✏️</span>
-      <div class="emoji-question-body">
-        <div class="emoji-question-prompt">じぶんの ことばを なぞってかこう</div>
-        <div>${boxes0}</div>
-      </div>
-    </div>`));
-  answers.push(w);
-
-  for (let i = 1; i < count; i++) {
-    const idx = (i - 1) % w.length;
-    const c = [...w][idx];
+function buildCustomTrace(count, words) {
+  const seq = buildCustomWordSequence(words, count);
+  const cards = seq.map((w, i) => {
+    const charsHtml = [...w].map((c) =>
+      `<div class="seikatsu-char-col">
+        <span class="seikatsu-trace">${escapeHtmlPrint(c)}</span>
+        <div class="hira-write"></div>
+      </div>`
+    ).join('');
     const inner = `
-      <div class="hira-group-label">「${ew}」の もじ</div>
-      <div class="hiragana-grid">
-        <div class="hira-cell">
-          <div class="hira-trace">${escapeHtmlPrint(c)}</div>
-          <div class="hira-write"></div>
+      <div class="emoji-question-row emoji-question-row--tight">
+        <span class="emoji-large">✏️</span>
+        <div class="emoji-question-body">
+          <div class="emoji-question-prompt">なぞり書き（${escapeHtmlPrint(w)}）</div>
+          <div>${charsHtml}</div>
         </div>
       </div>`;
-    cards.push(questionCard(i + 1, inner));
-    answers.push(c);
-  }
-  return { cardHtmls: cards, answers };
+    return questionCard(i + 1, inner);
+  });
+  return { cardHtmls: cards, answers: seq };
 }
 
-function buildCustomIntermediate(count, word) {
-  const cards = [];
-  const answers = [];
-  const choices = APP_DATA.seikatsu.getChoices(word);
-  const ew = escapeHtmlPrint(word);
-  const chHtml = choices.map((c) => `<span class="choice-item">${escapeHtmlPrint(c)}</span>`).join('');
-  cards.push(questionCard(1, `
-    <div class="choice-sentence">「${ew}」</div>
-    <div class="emoji-question-row">
-      <span class="emoji-large">✏️</span>
-      <div class="emoji-question-body">
-        <div class="emoji-question-prompt">おなじ ことばを えらびましょう</div>
-        <div class="choices-row"><span class="choice-label">こたえ：</span>${chHtml}</div>
-      </div>
-    </div>`));
-  answers.push(word);
-
-  const tpls = CUSTOM_PARTICLE_TEMPLATES;
-  const chars = [...word];
-  for (let i = 1; i < count; i++) {
-    const kind = (i - 1) % 2;
-    if (kind === 0) {
-      const tpl = tpls[(i - 1) % tpls.length];
-      const sentence = escapeHtmlPrint(tpl.sentence(word));
-      const parts = wrongParticleChoices(tpl.answer);
-      const pHtml = parts.map((c) => `<span class="choice-item">${escapeHtmlPrint(c)}</span>`).join('');
-      cards.push(questionCard(i + 1, `
-        <div class="choice-sentence">${sentence}</div>
-        <div class="choices-row">
-          <span class="choice-label">こたえ：</span>
-          ${pHtml}
-        </div>`));
-      answers.push(tpl.answer);
-    } else {
-      const pos = (i - 1) % chars.length;
-      const char = chars[pos];
-      const [d1, d2] = randomHiraganaCharsNot(char, 2);
-      const opts = shuffle([char, d1, d2]);
-      const oHtml = opts.map((c) => `<span class="choice-item">${escapeHtmlPrint(c)}</span>`).join('');
-      cards.push(questionCard(i + 1, `
-        <div class="emoji-question-row">
-          <span class="emoji-large">✏️</span>
-          <div class="emoji-question-body">
-            <div class="emoji-question-prompt">「${ew}」の ${pos + 1}もじめは どれ？</div>
-            <div class="choices-row"><span class="choice-label">こたえ：</span>${oHtml}</div>
-          </div>
-        </div>`));
-      answers.push(char);
-    }
-  }
-  return { cardHtmls: cards, answers };
-}
-
-function buildCustomAdvanced(count, word) {
-  const cards = [];
-  const answers = [];
-  const chars = [...word];
-  const boxes0 = chars.map(() =>
-    '<div class="write-box write-box-tight"></div>'
-  ).join('');
-  cards.push(questionCard(1, `
-    <div class="emoji-question-row">
-      <span class="emoji-large">✏️</span>
-      <div class="emoji-question-body">
-        <div class="emoji-question-prompt">（${chars.length}もじ）じぶんの ことばを かきましょう</div>
-        <div>${boxes0}</div>
-      </div>
-    </div>`));
-  answers.push(word);
-
-  const tpls = CUSTOM_PARTICLE_TEMPLATES;
-  for (let i = 1; i < count; i++) {
-    const tpl = tpls[(i - 1) % tpls.length];
-    const sentence = escapeHtmlPrint(tpl.sentence(word));
+function buildCustomCopy(count, words) {
+  const seq = buildCustomWordSequence(words, count);
+  const cards = seq.map((w, i) => {
+    const boxes = [...w].map(() =>
+      '<div class="write-box write-box-tight"></div>'
+    ).join('');
     const inner = `
-      <div class="desc-sentence">${sentence}</div>
-      <div class="hint-line">ヒント：（　）に はいる じょしを かきましょう</div>
-      <div class="answer-line"></div>`;
-    cards.push(questionCard(i + 1, inner));
-    answers.push(tpl.answer);
-  }
-  return { cardHtmls: cards, answers };
+      <div class="emoji-question-row">
+        <span class="emoji-large">📝</span>
+        <div class="emoji-question-body">
+          <div class="emoji-question-prompt">おてほん：${escapeHtmlPrint(w)}</div>
+          <div class="adv-prompt-sub">したの ますに ししゃ しましょう</div>
+          <div class="adv-write-row">${boxes}</div>
+        </div>
+      </div>`;
+    return questionCard(i + 1, inner);
+  });
+  return { cardHtmls: cards, answers: seq };
 }
 
 /* ── 共通：問題カード ── */

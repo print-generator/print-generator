@@ -14,6 +14,22 @@ const isProUser = planParam === 'pro';
 ════════════════════════════════════════ */
 let selectedContent = 'joshi';
 let selectedLevel   = 'beginner';
+let selectedCustomMode = 'trace';
+const CUSTOM_WORD_MAX_COUNT = 8;
+const CUSTOM_WORD_MAX_LEN = 15;
+
+function getEffectiveLevelForContent(content, levelFromUi) {
+  if (content !== 'custom') return levelFromUi;
+  return selectedCustomMode === 'trace' ? 'beginner' : 'advanced';
+}
+
+function getLevelLabel(level, content) {
+  if (content === 'custom') {
+    return level === 'advanced' ? '試写' : 'なぞり書き';
+  }
+  const levelLabels = { beginner: '初級', intermediate: '中級', advanced: '上級' };
+  return levelLabels[level] || level;
+}
 
 /** 無料版のみカウント（累計5回まで） */
 const FREE_GENERATION_LIMIT = 5;
@@ -99,29 +115,94 @@ function refreshOneClickRow() {
 }
 
 function refreshCustomWordControl() {
-  const input = document.getElementById('customWord');
   const hint = document.getElementById('customWordHint');
   const row = document.getElementById('customWordRow');
-  if (!input) return;
-  input.maxLength = 15;
+  const isCustom = selectedContent === 'custom';
   const show = isProUser && selectedContent === 'custom';
   if (row) row.hidden = !show;
+  const levelCard = document.getElementById('levelStepCard');
+  const customModeCard = document.getElementById('customModeStepCard');
+  if (levelCard) levelCard.hidden = isCustom;
+  if (customModeCard) customModeCard.hidden = !isCustom;
   if (!show) {
-    input.value = '';
-    input.disabled = true;
-    input.setAttribute('aria-readonly', 'true');
     if (hint) {
       hint.textContent = isProUser
         ? '「カスタム問題」を選ぶと入力できます（最大15文字）。'
         : 'カスタム問題は有料版で利用できます。';
     }
   } else {
-    input.disabled = false;
-    input.removeAttribute('aria-readonly');
     if (hint) {
-      hint.textContent = '入力した単語が必ず問題に含まれます（最大15文字）。';
+      hint.textContent = '1単語15文字まで。入力した単語はすべて問題に反映されます。';
     }
   }
+}
+
+function buildCustomWordRow(value = '', inputId = '') {
+  const row = document.createElement('div');
+  row.className = 'custom-word-row';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'setting-input custom-word-input';
+  if (inputId) input.id = inputId;
+  input.maxLength = CUSTOM_WORD_MAX_LEN;
+  input.autocomplete = 'off';
+  input.placeholder = '例：れんしゅう';
+  input.value = value;
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'custom-remove-btn';
+  removeBtn.innerHTML = '<i class="fas fa-trash"></i> 削除';
+  removeBtn.addEventListener('click', () => {
+    const list = document.getElementById('customWordsList');
+    if (!list) return;
+    if (list.children.length <= 1) {
+      input.value = '';
+      input.focus();
+      return;
+    }
+    row.remove();
+    refreshCustomWordButtons();
+  });
+
+  row.appendChild(input);
+  row.appendChild(removeBtn);
+  return row;
+}
+
+function refreshCustomWordButtons() {
+  const list = document.getElementById('customWordsList');
+  const addBtn = document.getElementById('addCustomWordBtn');
+  if (!list || !addBtn) return;
+  addBtn.disabled = list.children.length >= CUSTOM_WORD_MAX_COUNT;
+}
+
+function ensureCustomWordInputsReady() {
+  const list = document.getElementById('customWordsList');
+  const addBtn = document.getElementById('addCustomWordBtn');
+  if (!list || !addBtn || list.dataset.ready === '1') return;
+
+  list.appendChild(buildCustomWordRow('', 'customWord1'));
+  list.dataset.ready = '1';
+  refreshCustomWordButtons();
+
+  addBtn.addEventListener('click', () => {
+    if (list.children.length >= CUSTOM_WORD_MAX_COUNT) return;
+    const nextId = `customWord${list.children.length + 1}`;
+    list.appendChild(buildCustomWordRow('', nextId));
+    refreshCustomWordButtons();
+    const last = list.querySelector('.custom-word-row:last-child .custom-word-input');
+    if (last) last.focus();
+  });
+}
+
+function getCustomWordsFromUI() {
+  const list = document.getElementById('customWordsList');
+  if (!list) return [];
+  return Array.from(list.querySelectorAll('.custom-word-input'))
+    .map((el) => (el.value || '').trim())
+    .filter((v) => v.length > 0)
+    .slice(0, CUSTOM_WORD_MAX_COUNT);
 }
 
 /** 無料時は上級を選べないよう UI を更新 */
@@ -164,6 +245,8 @@ function applyPlanTierToUI() {
   refreshOneClickRow();
   updateFreeGenQuotaUI();
   syncModalPanelsForPlan();
+  ensureCustomWordInputsReady();
+  refreshCustomWordButtons();
   const customBtn = document.getElementById('contentBtnCustom');
   if (customBtn) {
     customBtn.classList.toggle('content-btn--locked', !isProUser);
@@ -207,6 +290,17 @@ document.querySelectorAll('.level-btn').forEach(btn => {
   });
 });
 
+document.querySelectorAll('.custom-mode-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.custom-mode-btn').forEach((b) => {
+      const on = b === btn;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    selectedCustomMode = btn.dataset.value || 'trace';
+  });
+});
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', applyPlanTierToUI);
 } else {
@@ -218,8 +312,9 @@ if (document.readyState === 'loading') {
 ════════════════════════════════════════ */
 function generatePrint() {
   const count    = parseInt(document.getElementById('questionCount').value, 10);
-  const level    = document.querySelector('.level-btn.active')?.dataset.value || selectedLevel;
+  const levelRaw = document.querySelector('.level-btn.active')?.dataset.value || selectedLevel;
   const content  = document.querySelector('.content-btn.active')?.dataset.value || selectedContent;
+  const level = getEffectiveLevelForContent(content, levelRaw);
   const showName = document.getElementById('studentName').value === 'yes';
   const showDate = document.getElementById('dateField').value === 'yes';
 
@@ -246,18 +341,18 @@ function generatePrint() {
   const wantAnswers =
     isProUser && document.getElementById('includeAnswersSheet')?.checked;
 
-  let customWord = '';
+  let customPayload = null;
   if (content === 'custom') {
-    const cwInput = document.getElementById('customWord');
-    customWord = (cwInput && cwInput.value ? cwInput.value : '').trim();
-    if (!customWord) {
-      alert('カスタム問題では単語を入力してください。');
+    const words = getCustomWordsFromUI();
+    if (words.length < 1) {
+      alert('カスタム問題では単語を1つ以上入力してください。');
       return;
     }
-    if (customWord.length > 15) {
-      alert('カスタム単語は15文字までです。');
+    if (words.some((w) => w.length > CUSTOM_WORD_MAX_LEN)) {
+      alert('各単語は15文字までです。');
       return;
     }
+    customPayload = { words, mode: selectedCustomMode };
   }
 
   const overlay = document.getElementById('loadingOverlay');
@@ -271,7 +366,7 @@ function generatePrint() {
         count,
         showName,
         showDate,
-        customWord,
+        customPayload,
         wantAnswers
       );
       const sheet = document.getElementById('printSheet');
@@ -384,8 +479,10 @@ async function savePdfViaHtml2Canvas() {
 
   const contentSel =
     document.querySelector('.content-btn.active')?.dataset.value || selectedContent;
-  const levelSel =
-    document.querySelector('.level-btn.active')?.dataset.value || selectedLevel;
+  const levelSel = getEffectiveLevelForContent(
+    contentSel,
+    document.querySelector('.level-btn.active')?.dataset.value || selectedLevel
+  );
 
   try {
     if (document.fonts && document.fonts.ready) {
@@ -466,9 +563,8 @@ async function savePdfViaHtml2Canvas() {
       }
 
       const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語', custom: 'カスタム問題' };
-      const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
       pdf.save(
-        `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`
+        `プリント_${contentLabels[contentSel]}_${getLevelLabel(levelSel, contentSel)}_${dateStamp()}.pdf`
       );
     } finally {
       document.body.classList.remove('pdf-mobile-capture');
@@ -603,9 +699,8 @@ async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) 
     }
 
     const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語', custom: 'カスタム問題' };
-    const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
     pdf.save(
-      `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`
+      `プリント_${contentLabels[contentSel]}_${getLevelLabel(levelSel, contentSel)}_${dateStamp()}.pdf`
     );
   } finally {
     document.body.classList.remove('pdf-mobile-capture');

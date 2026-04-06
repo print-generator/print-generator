@@ -85,13 +85,64 @@ function refreshKatakanaGenerateNote() {
 function refreshKatakanaToggleRow() {
   const row = document.getElementById('katakanaToggleRow');
   const cb = document.getElementById('includeKatakana');
-  if (row) row.hidden = !isProUser;
-  if (cb && !isProUser) cb.checked = false;
+  const hint = document.getElementById('katakanaToggleHint');
+  if (row) row.hidden = false;
+  if (!cb) return;
+  if (!isProUser) {
+    cb.checked = false;
+    if (hint) hint.textContent = '※有料版のみ利用できます';
+  } else if (hint) {
+    hint.textContent = 'オン：ひらがな＋カタカナ／オフ：ひらがなのみ';
+  }
 }
 
 function getAllowKatakana() {
   if (!isProUser) return false;
   return !!document.getElementById('includeKatakana')?.checked;
+}
+
+function openFeatureLockedModal(feature) {
+  const modal = document.getElementById('planModal');
+  const heading = document.getElementById('planPitchHeading');
+  const ctx = document.getElementById('planModalContext');
+  const pitchList = modal?.querySelector('[data-modal-panel="pitch"] .plan-pitch-list');
+  const line = modal?.querySelector('[data-modal-panel="pitch"] .plan-pitch-line');
+  if (!modal || !heading || !pitchList || !line) {
+    openPlanModal();
+    return;
+  }
+
+  const conf =
+    feature === 'katakana'
+      ? {
+          context: 'カタカナ機能は有料版で利用できます',
+          title: 'カタカナ機能は有料版で利用できます',
+          bullets: [
+            'ひらがな＋カタカナの出題に対応',
+            '学習状況に合わせてON/OFF切り替え可能',
+          ],
+        }
+      : {
+          context: 'カスタム問題は有料版で利用できます',
+          title: 'カスタム問題は有料版で利用できます',
+          bullets: [
+            '自分専用の単語でプリント作成',
+            '最大8単語まで入力可能',
+            'なぞり書き・試写に対応',
+          ],
+        };
+
+  heading.textContent = conf.title;
+  pitchList.innerHTML = conf.bullets.map((b) => `<li>${b}</li>`).join('');
+  line.textContent = '有料版を利用する';
+  if (ctx) {
+    ctx.textContent = conf.context;
+    ctx.hidden = false;
+  }
+  syncModalPanelsForPlan();
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  modal.querySelector('.modal-close')?.focus();
 }
 
 function getFreeQuestionCountOptions() {
@@ -197,6 +248,15 @@ function buildCustomWordRow(value = '', inputId = '', placeholderIndex = 0) {
 
   row.appendChild(input);
   row.appendChild(removeBtn);
+  row.addEventListener('click', () => {
+    if (!isProUser) openFeatureLockedModal('custom');
+  });
+  input.addEventListener('focus', () => {
+    if (!isProUser) {
+      input.blur();
+      openFeatureLockedModal('custom');
+    }
+  });
   return row;
 }
 
@@ -217,6 +277,10 @@ function ensureCustomWordInputsReady() {
   refreshCustomWordButtons();
 
   addBtn.addEventListener('click', () => {
+    if (!isProUser) {
+      openFeatureLockedModal('custom');
+      return;
+    }
     if (list.children.length >= CUSTOM_WORD_MAX_COUNT) return;
     const nextId = `customWord${list.children.length + 1}`;
     const phIdx = list.children.length;
@@ -293,7 +357,7 @@ function applyPlanTierToUI() {
 document.querySelectorAll('.content-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     if (!isProUser && btn.dataset.value === 'custom') {
-      openPlanModal('カスタム問題は有料版で利用可能です');
+      openFeatureLockedModal('custom');
       return;
     }
     document.querySelectorAll('.content-btn').forEach(b => {
@@ -322,6 +386,17 @@ document.querySelectorAll('.level-btn').forEach(btn => {
     selectedLevel = btn.dataset.value;
   });
 });
+
+const includeKatakanaEl = document.getElementById('includeKatakana');
+if (includeKatakanaEl) {
+  includeKatakanaEl.addEventListener('click', (e) => {
+    if (!isProUser) {
+      e.preventDefault();
+      includeKatakanaEl.checked = false;
+      openFeatureLockedModal('katakana');
+    }
+  });
+}
 
 document.querySelectorAll('.custom-mode-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -366,7 +441,7 @@ function generatePrint() {
       return;
     }
     if (content === 'custom') {
-      openPlanModal('カスタム問題は有料版で利用可能です');
+      openFeatureLockedModal('custom');
       return;
     }
   }
@@ -596,7 +671,7 @@ async function savePdfViaHtml2Canvas() {
         );
       }
 
-      const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語', custom: 'カスタム問題' };
+      const contentLabels = { joshi: '助詞', hiragana: '50音', seikatsu: '生活単語', custom: 'カスタム問題' };
       pdf.save(
         `プリント_${contentLabels[contentSel]}_${getLevelLabel(levelSel, contentSel)}_${dateStamp()}.pdf`
       );
@@ -732,7 +807,7 @@ async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) 
       );
     }
 
-    const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語', custom: 'カスタム問題' };
+    const contentLabels = { joshi: '助詞', hiragana: '50音', seikatsu: '生活単語', custom: 'カスタム問題' };
     pdf.save(
       `プリント_${contentLabels[contentSel]}_${getLevelLabel(levelSel, contentSel)}_${dateStamp()}.pdf`
     );
@@ -769,6 +844,22 @@ function syncModalPanelsForPlan() {
 function openPlanModal(contextMessage) {
   const modal = document.getElementById('planModal');
   const ctx = document.getElementById('planModalContext');
+  const heading = document.getElementById('planPitchHeading');
+  const pitchList = modal?.querySelector('[data-modal-panel="pitch"] .plan-pitch-list');
+  const line = modal?.querySelector('[data-modal-panel="pitch"] .plan-pitch-line');
+  if (heading) heading.textContent = '有料版でできること';
+  if (pitchList) {
+    pitchList.innerHTML = [
+      '<li>カスタム問題（自分の単語でプリント）が使える</li>',
+      '<li>※カタカナは有料版で利用できます</li>',
+      '<li>上級レベルが使える</li>',
+      '<li>15問／20問／25問／30問が選べる（＋4問から）</li>',
+      '<li>解答付きプリントが使える</li>',
+      '<li>問題生成回数が無制限</li>',
+      '<li>ワンクリック自動生成が使える</li>',
+    ].join('');
+  }
+  if (line) line.textContent = '有料版のお申し込みはLINEから';
   if (ctx) {
     if (contextMessage) {
       ctx.textContent = contextMessage;

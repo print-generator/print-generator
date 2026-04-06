@@ -568,6 +568,12 @@ body.plan-free .content-btn--custom:not(.active) {
   cursor: pointer;
   padding: 9px 12px;
 }
+.custom-remove-btn {
+  background: #fff5f5;
+  border-color: #f1b5b5;
+  color: #b33a3a;
+  min-height: 44px;
+}
 .custom-add-btn {
   margin-top: 6px;
   width: 100%;
@@ -583,6 +589,7 @@ body.plan-free .content-btn--custom:not(.active) {
 .custom-remove-btn:hover {
   border-color: var(--primary);
   color: var(--primary);
+  background: #fff;
 }
 .custom-add-btn:disabled {
   opacity: 0.5;
@@ -1586,8 +1593,14 @@ body.lp-pricing-page {
   .option-label { font-size: .85rem; }
   .option-desc  { font-size: .68rem; }
   .settings-row { grid-template-columns: 1fr; padding: 14px 16px; }
-  .settings-row .setting-item { flex-direction: row; align-items: center; justify-content: space-between; }
-  .setting-select { width: 130px; }
+  .settings-row .setting-item { flex-direction: column; align-items: stretch; justify-content: flex-start; }
+  .setting-select { width: 100%; }
+  .settings-row--katakana .setting-item--full,
+  .settings-row--answer .setting-item--full { gap: 8px; }
+  .settings-row--katakana .setting-label--checkbox,
+  .settings-row--answer .setting-label--checkbox { width: 100%; align-items: flex-start; }
+  .settings-row--katakana .setting-hint,
+  .settings-row--answer .setting-hint { margin-top: 2px; }
   .generate-btn { padding: 16px 32px; font-size: 1rem; }
   .preview-controls { flex-direction: column; align-items: stretch; }
   .preview-actions { justify-content: center; }

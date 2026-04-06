@@ -6,8 +6,8 @@
 
   <!-- ===== SEO ===== -->
   <title>家庭学習プリント生成｜学習プリント自動作成ツール</title>
-  <meta name="description" content="家庭学習や個別学習に使える学習プリント自動作成ツール。子ども向けのドリルとして、助詞・ひらがな・生活単語をワンクリックで作成。初級〜上級の3段階レベルに対応。印刷・PDF保存も簡単。" />
-  <meta name="keywords" content="家庭学習, 学習プリント, 子ども向け学習, ドリル, 個別学習, プリント, 自動生成, 助詞, ひらがな, 生活単語, 無料, 教材作成" />
+  <meta name="description" content="家庭学習や個別学習に使える学習プリント自動作成ツール。子ども向けのドリルとして、助詞・50音・生活単語をワンクリックで作成。初級〜上級の3段階レベルに対応。印刷・PDF保存も簡単。" />
+  <meta name="keywords" content="家庭学習, 学習プリント, 子ども向け学習, ドリル, 個別学習, プリント, 自動生成, 助詞, 50音, ひらがな, カタカナ, 生活単語, 無料, 教材作成" />
   <meta name="author" content="家庭学習プリント生成" />
   <meta name="robots" content="index, follow" />
 
@@ -32,7 +32,7 @@
     "@context": "https://schema.org",
     "@type": "WebApplication",
     "name": "家庭学習プリント生成",
-    "description": "家庭学習や個別学習に使える学習プリント自動作成ツール。助詞・ひらがな・生活単語を初級〜上級で生成。",
+    "description": "家庭学習や個別学習に使える学習プリント自動作成ツール。助詞・50音・生活単語を初級〜上級で生成。",
     "applicationCategory": "EducationalApplication",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" },
     "inLanguage": "ja"
@@ -80,7 +80,7 @@
 
     <!-- 何ができるか：箇条書き -->
     <ul class="hero-list">
-      <li><i class="fas fa-check"></i> 助詞・ひらがな・生活単語（＋有料でカスタム問題）</li>
+      <li><i class="fas fa-check"></i> 助詞・50音・生活単語（＋有料でカスタム問題）</li>
       <li><i class="fas fa-check"></i> 初級〜上級の3段階レベルで出題</li>
       <li><i class="fas fa-check"></i> そのまま印刷 or PDF保存できる</li>
       <li><i class="fas fa-check"></i> 登録なし・無料で今すぐ使える</li>
@@ -127,7 +127,7 @@
         <p class="how-step-desc">
           4種類から選ぶだけ。<br>
           ・助詞（は・を・に）<br>
-          ・ひらがな（あ〜ん）<br>
+          ・50音（ひらがな・カタカナ）<br>
           ・生活単語（くつ・かばん）<br>
           ・カスタム問題（自分の単語・有料）
         </p>
@@ -220,8 +220,8 @@
           </button>
           <button class="option-btn content-btn" data-value="hiragana" aria-pressed="false">
             <span class="option-icon">🔤</span>
-            <span class="option-label">ひらがな</span>
-            <span class="option-desc">あ〜ん の練習</span>
+            <span class="option-label">50音</span>
+            <span class="option-desc">ひらがな・カタカナ</span>
           </button>
           <button class="option-btn content-btn" data-value="seikatsu" aria-pressed="false">
             <span class="option-icon">🏠</span>
@@ -322,9 +322,9 @@
           <div class="setting-item setting-item--full">
             <label class="setting-label setting-label--checkbox" for="includeKatakana">
               <input type="checkbox" id="includeKatakana" class="setting-checkbox" checked />
-              <span><i class="fas fa-font"></i> カタカナを含める</span>
+              <span><i class="fas fa-font"></i> カタカナを含める（有料）</span>
             </label>
-            <p class="setting-hint">オン：ひらがな＋カタカナ／オフ：ひらがなのみ</p>
+            <p class="setting-hint" id="katakanaToggleHint">オン：ひらがな＋カタカナ／オフ：ひらがなのみ</p>
           </div>
         </div>
         <div class="settings-row settings-row--custom" id="customWordRow" hidden>
@@ -479,7 +479,7 @@
           <i class="fas fa-chevron-down faq-arrow"></i>
         </button>
         <div class="faq-a">
-          「助詞」「ひらがな」「生活単語」の3種類に対応しています。無料は1日5回・最大10問まで。有料プランでは最大30問・上級レベル・解答付きプリントなどがご利用いただけます。
+          「助詞」「50音」「生活単語」の3種類に対応しています。無料は1日5回・最大10問まで。有料プランでは最大30問・上級レベル・解答付きプリントなどがご利用いただけます。
         </div>
       </div>
 

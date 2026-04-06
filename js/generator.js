@@ -205,7 +205,7 @@ function wrapPrintPagesHtml(chunks, header, instr, footer, putFooterOnLastQuesti
 function buildMeta(content, level) {
   const contentInfo = {
     joshi:    { label: '助詞',   emoji: '📝' },
-    hiragana: { label: 'ひらがな', emoji: '🔤' },
+    hiragana: { label: '50音', emoji: '🔤' },
     seikatsu: { label: '生活単語', emoji: '🏠' },
     custom:   { label: 'カスタム問題', emoji: '✏️' },
   };

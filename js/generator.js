@@ -118,7 +118,7 @@ function getCardsPerPage(content, level) {
     if (level === 'advanced') return 4;
     return 6;
   }
-  if (content === 'seikatsu') {
+  if (content === 'seikatsu' || content === 'custom') {
     return level === 'advanced' ? 4 : 6;
   }
   return 6;
@@ -129,7 +129,7 @@ function getCardsPerPage(content, level) {
  * PC 印刷の getCardsPerPage とは別。助詞・生活 初級/中級 4、上級 3。ひらがなは 3〜4。
  */
 function getCardsPerPageForMobilePdf(content, level) {
-  if (content === 'joshi' || content === 'seikatsu') {
+  if (content === 'joshi' || content === 'seikatsu' || content === 'custom') {
     return level === 'advanced' ? 3 : 4;
   }
   if (content === 'hiragana') {
@@ -180,6 +180,7 @@ function buildMeta(content, level) {
     joshi:    { label: '助詞',   emoji: '📝' },
     hiragana: { label: 'ひらがな', emoji: '🔤' },
     seikatsu: { label: '生活単語', emoji: '🏠' },
+    custom:   { label: 'カスタム問題', emoji: '✏️' },
   };
   const levelInfo = {
     beginner:     { label: '初級',  desc: 'なぞり書き',  badge: '🌱' },
@@ -234,6 +235,11 @@ function buildInstruction(meta) {
       intermediate: 'えに あう ことばを えらびましょう。',
       advanced:     'えを みて ことばを かきましょう。',
     },
+    custom: {
+      beginner:     'じぶんで いれた ことばを なぞったり かきましょう。',
+      intermediate: 'じぶんの ことばが はいった もんだいです。',
+      advanced:     'じぶんの ことばを かいたり、（　）に あてはまる もじを かきましょう。',
+    },
   };
   const text = instructions[meta.content][meta.level];
   return `<div class="print-instruction">
@@ -248,6 +254,17 @@ function buildQuestionBodyStructured(content, level, count, customWord) {
   const cw = typeof customWord === 'string' && customWord.trim()
     ? customWord.trim().slice(0, 15)
     : '';
+  if (content === 'custom') {
+    if (!cw) {
+      return { cardHtmls: [], answers: [] };
+    }
+    const customBuilders = {
+      beginner:     buildCustomBeginner,
+      intermediate: buildCustomIntermediate,
+      advanced:     buildCustomAdvanced,
+    };
+    return customBuilders[level](count, cw);
+  }
   const builders = {
     joshi: {
       beginner:     buildJoshiBeginner,
@@ -265,7 +282,7 @@ function buildQuestionBodyStructured(content, level, count, customWord) {
       advanced:     buildSeikatsuAdvanced,
     },
   };
-  return builders[content][level](count, content === 'seikatsu' ? cw : '');
+  return builders[content][level](count, '');
 }
 
 /** @deprecated 直接は使わず buildQuestionBodyStructured を優先 */
@@ -388,15 +405,8 @@ function buildHiraganaAdvanced(count, _cw) {
    生活単語
    ==================================================== */
 
-function buildSeikatsuBeginner(count, customWord) {
-  let data;
-  if (customWord) {
-    const pool = APP_DATA.seikatsu.words.filter((w) => w.word !== customWord);
-    const rest = pickRandom(pool, Math.max(0, count - 1));
-    data = [{ word: customWord, emoji: '✏️', category: 'カスタム' }, ...rest];
-  } else {
-    data = pickRandom(APP_DATA.seikatsu.words, count);
-  }
+function buildSeikatsuBeginner(count, _cw) {
+  const data = pickRandom(APP_DATA.seikatsu.words, count);
   const answers = data.map((q) => q.word);
   const cards = data.map((q, i) => {
     const boxes = q.word.split('').map(c =>
@@ -418,15 +428,8 @@ function buildSeikatsuBeginner(count, customWord) {
   return { cardHtmls: cards, answers };
 }
 
-function buildSeikatsuIntermediate(count, customWord) {
-  let data;
-  if (customWord) {
-    const pool = APP_DATA.seikatsu.words.filter((w) => w.word !== customWord);
-    const rest = pickRandom(pool, Math.max(0, count - 1));
-    data = [{ word: customWord, emoji: '✏️', category: 'カスタム' }, ...rest];
-  } else {
-    data = pickRandom(APP_DATA.seikatsu.words, count);
-  }
+function buildSeikatsuIntermediate(count, _cw) {
+  const data = pickRandom(APP_DATA.seikatsu.words, count);
   const answers = data.map((q) => q.word);
   const cards = data.map((q, i) => {
     const choices = APP_DATA.seikatsu.getChoices(q.word);
@@ -446,15 +449,8 @@ function buildSeikatsuIntermediate(count, customWord) {
   return { cardHtmls: cards, answers };
 }
 
-function buildSeikatsuAdvanced(count, customWord) {
-  let data;
-  if (customWord) {
-    const pool = APP_DATA.seikatsu.words.filter((w) => w.word !== customWord);
-    const rest = pickRandom(pool, Math.max(0, count - 1));
-    data = [{ word: customWord, emoji: '✏️', category: 'カスタム' }, ...rest];
-  } else {
-    data = pickRandom(APP_DATA.seikatsu.words, count);
-  }
+function buildSeikatsuAdvanced(count, _cw) {
+  const data = pickRandom(APP_DATA.seikatsu.words, count);
   const answers = data.map((q) => q.word);
   const cards = data.map((q, i) => {
     const boxes = q.word.split('').map(() =>
@@ -470,6 +466,158 @@ function buildSeikatsuAdvanced(count, customWord) {
       </div>`;
     return questionCard(i + 1, inner);
   });
+  return { cardHtmls: cards, answers };
+}
+
+/* ====================================================
+   カスタム問題（入力語を必ず含む・有料版UIからのみ）
+   ==================================================== */
+
+const CUSTOM_HIRAGANA_POOL =
+  'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
+
+function randomHiraganaCharsNot(c, n) {
+  const pool = [...CUSTOM_HIRAGANA_POOL].filter((x) => x !== c);
+  return pickRandom(pool, n);
+}
+
+/** 入力語を文に入れた助詞テンプレ（中級は3択、上級は記述） */
+const CUSTOM_PARTICLE_TEMPLATES = [
+  { sentence: (w) => `（　）に ${w} を おきます。`, answer: 'に' },
+  { sentence: (w) => `（　）で ${w} を つかいます。`, answer: 'で' },
+  { sentence: (w) => `（　）へ ${w} を もっていきます。`, answer: 'へ' },
+  { sentence: (w) => `（　）と ${w} を かきます。`, answer: 'と' },
+  { sentence: (w) => `わたしは ${w}（　）すきです。`, answer: 'が' },
+];
+
+function wrongParticleChoices(correct) {
+  const all = ['は', 'が', 'を', 'に', 'で', 'へ', 'と', 'も', 'や', 'の'];
+  const wrong = pickRandom(
+    all.filter((x) => x !== correct),
+    2
+  );
+  return shuffle([correct, ...wrong]);
+}
+
+function buildCustomBeginner(count, word) {
+  const cards = [];
+  const answers = [];
+  const w = word;
+  const ew = escapeHtmlPrint(w);
+  const boxes0 = [...w].map((c) =>
+    `<div class="seikatsu-char-col">
+      <span class="seikatsu-trace">${escapeHtmlPrint(c)}</span>
+      <div class="hira-write"></div>
+    </div>`
+  ).join('');
+  cards.push(questionCard(1, `
+    <div class="emoji-question-row emoji-question-row--tight">
+      <span class="emoji-large">✏️</span>
+      <div class="emoji-question-body">
+        <div class="emoji-question-prompt">じぶんの ことばを なぞってかこう</div>
+        <div>${boxes0}</div>
+      </div>
+    </div>`));
+  answers.push(w);
+
+  for (let i = 1; i < count; i++) {
+    const idx = (i - 1) % w.length;
+    const c = [...w][idx];
+    const inner = `
+      <div class="hira-group-label">「${ew}」の もじ</div>
+      <div class="hiragana-grid">
+        <div class="hira-cell">
+          <div class="hira-trace">${escapeHtmlPrint(c)}</div>
+          <div class="hira-write"></div>
+        </div>
+      </div>`;
+    cards.push(questionCard(i + 1, inner));
+    answers.push(c);
+  }
+  return { cardHtmls: cards, answers };
+}
+
+function buildCustomIntermediate(count, word) {
+  const cards = [];
+  const answers = [];
+  const choices = APP_DATA.seikatsu.getChoices(word);
+  const ew = escapeHtmlPrint(word);
+  const chHtml = choices.map((c) => `<span class="choice-item">${escapeHtmlPrint(c)}</span>`).join('');
+  cards.push(questionCard(1, `
+    <div class="choice-sentence">「${ew}」</div>
+    <div class="emoji-question-row">
+      <span class="emoji-large">✏️</span>
+      <div class="emoji-question-body">
+        <div class="emoji-question-prompt">おなじ ことばを えらびましょう</div>
+        <div class="choices-row"><span class="choice-label">こたえ：</span>${chHtml}</div>
+      </div>
+    </div>`));
+  answers.push(word);
+
+  const tpls = CUSTOM_PARTICLE_TEMPLATES;
+  const chars = [...word];
+  for (let i = 1; i < count; i++) {
+    const kind = (i - 1) % 2;
+    if (kind === 0) {
+      const tpl = tpls[(i - 1) % tpls.length];
+      const sentence = escapeHtmlPrint(tpl.sentence(word));
+      const parts = wrongParticleChoices(tpl.answer);
+      const pHtml = parts.map((c) => `<span class="choice-item">${escapeHtmlPrint(c)}</span>`).join('');
+      cards.push(questionCard(i + 1, `
+        <div class="choice-sentence">${sentence}</div>
+        <div class="choices-row">
+          <span class="choice-label">こたえ：</span>
+          ${pHtml}
+        </div>`));
+      answers.push(tpl.answer);
+    } else {
+      const pos = (i - 1) % chars.length;
+      const char = chars[pos];
+      const [d1, d2] = randomHiraganaCharsNot(char, 2);
+      const opts = shuffle([char, d1, d2]);
+      const oHtml = opts.map((c) => `<span class="choice-item">${escapeHtmlPrint(c)}</span>`).join('');
+      cards.push(questionCard(i + 1, `
+        <div class="emoji-question-row">
+          <span class="emoji-large">✏️</span>
+          <div class="emoji-question-body">
+            <div class="emoji-question-prompt">「${ew}」の ${pos + 1}もじめは どれ？</div>
+            <div class="choices-row"><span class="choice-label">こたえ：</span>${oHtml}</div>
+          </div>
+        </div>`));
+      answers.push(char);
+    }
+  }
+  return { cardHtmls: cards, answers };
+}
+
+function buildCustomAdvanced(count, word) {
+  const cards = [];
+  const answers = [];
+  const chars = [...word];
+  const boxes0 = chars.map(() =>
+    '<div class="write-box write-box-tight"></div>'
+  ).join('');
+  cards.push(questionCard(1, `
+    <div class="emoji-question-row">
+      <span class="emoji-large">✏️</span>
+      <div class="emoji-question-body">
+        <div class="emoji-question-prompt">（${chars.length}もじ）じぶんの ことばを かきましょう</div>
+        <div>${boxes0}</div>
+      </div>
+    </div>`));
+  answers.push(word);
+
+  const tpls = CUSTOM_PARTICLE_TEMPLATES;
+  for (let i = 1; i < count; i++) {
+    const tpl = tpls[(i - 1) % tpls.length];
+    const sentence = escapeHtmlPrint(tpl.sentence(word));
+    const inner = `
+      <div class="desc-sentence">${sentence}</div>
+      <div class="hint-line">ヒント：（　）に はいる じょしを かきましょう</div>
+      <div class="answer-line"></div>`;
+    cards.push(questionCard(i + 1, inner));
+    answers.push(tpl.answer);
+  }
   return { cardHtmls: cards, answers };
 }
 

@@ -441,6 +441,44 @@ body {
 .option-label { font-size: 1rem; font-weight: 700; color: var(--text); }
 .option-desc  { font-size: .76rem; color: var(--text-sub); }
 
+.option-grid--four {
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 720px) {
+  .option-grid--four {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.content-btn--custom {
+  position: relative;
+  padding-top: 26px;
+}
+.option-pro-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, var(--gold) 0%, #e69500 100%);
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+body.plan-free .content-btn--custom:not(.active) {
+  opacity: 0.9;
+}
+.content-btn--custom.content-btn--locked:not(.active) {
+  border-style: dashed;
+  border-color: rgba(249, 171, 0, 0.5);
+}
+.content-btn--custom.active .option-pro-badge {
+  background: #fff;
+  color: #c77800;
+  border: 1px solid var(--gold);
+}
+
 .settings-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1464,6 +1502,7 @@ body.lp-pricing-page {
 @media (max-width: 600px) {
   .header-nav .nav-link { display: none; }
   .option-grid { grid-template-columns: repeat(2,1fr); gap: 8px; padding: 14px 12px; }
+  .option-grid.option-grid--four { grid-template-columns: repeat(2, 1fr); }
   .option-btn { padding: 14px 6px; }
   .option-icon { font-size: 1.6rem; }
   .option-label { font-size: .85rem; }

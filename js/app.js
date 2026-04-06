@@ -101,20 +101,25 @@ function refreshOneClickRow() {
 function refreshCustomWordControl() {
   const input = document.getElementById('customWord');
   const hint = document.getElementById('customWordHint');
+  const row = document.getElementById('customWordRow');
   if (!input) return;
   input.maxLength = 15;
-  if (!isProUser) {
+  const show = isProUser && selectedContent === 'custom';
+  if (row) row.hidden = !show;
+  if (!show) {
     input.value = '';
     input.disabled = true;
     input.setAttribute('aria-readonly', 'true');
     if (hint) {
-      hint.textContent = '有料プランで利用できます（生活単語・最大15文字）。';
+      hint.textContent = isProUser
+        ? '「カスタム問題」を選ぶと入力できます（最大15文字）。'
+        : 'カスタム問題は有料版で利用できます。';
     }
   } else {
     input.disabled = false;
     input.removeAttribute('aria-readonly');
     if (hint) {
-      hint.textContent = '生活単語の1問目に反映されます（最大15文字）。';
+      hint.textContent = '入力した単語が必ず問題に含まれます（最大15文字）。';
     }
   }
 }
@@ -144,6 +149,14 @@ function applyPlanTierToUI() {
   document.body.classList.toggle('plan-pro', isProUser);
   document.body.classList.toggle('plan-free', !isProUser);
   updatePlanBadge();
+  if (!isProUser && selectedContent === 'custom') {
+    selectedContent = 'joshi';
+    document.querySelectorAll('.content-btn').forEach((b) => {
+      const on = b.dataset.value === 'joshi';
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
   refreshQuestionCountOptions();
   refreshCustomWordControl();
   refreshLevelButtons();
@@ -151,6 +164,11 @@ function applyPlanTierToUI() {
   refreshOneClickRow();
   updateFreeGenQuotaUI();
   syncModalPanelsForPlan();
+  const customBtn = document.getElementById('contentBtnCustom');
+  if (customBtn) {
+    customBtn.classList.toggle('content-btn--locked', !isProUser);
+    customBtn.setAttribute('aria-disabled', !isProUser ? 'true' : 'false');
+  }
 }
 
 /* ════════════════════════════════════════
@@ -158,6 +176,10 @@ function applyPlanTierToUI() {
 ════════════════════════════════════════ */
 document.querySelectorAll('.content-btn').forEach(btn => {
   btn.addEventListener('click', () => {
+    if (!isProUser && btn.dataset.value === 'custom') {
+      openPlanModal('カスタム問題は有料版で利用可能です');
+      return;
+    }
     document.querySelectorAll('.content-btn').forEach(b => {
       b.classList.remove('active');
       b.setAttribute('aria-pressed', 'false');
@@ -165,6 +187,7 @@ document.querySelectorAll('.content-btn').forEach(btn => {
     btn.classList.add('active');
     btn.setAttribute('aria-pressed', 'true');
     selectedContent = btn.dataset.value;
+    refreshCustomWordControl();
   });
 });
 
@@ -214,15 +237,23 @@ function generatePrint() {
       openPlanModal('上級は有料版で利用可能です');
       return;
     }
+    if (content === 'custom') {
+      openPlanModal('カスタム問題は有料版で利用可能です');
+      return;
+    }
   }
 
   const wantAnswers =
     isProUser && document.getElementById('includeAnswersSheet')?.checked;
 
   let customWord = '';
-  if (isProUser) {
+  if (content === 'custom') {
     const cwInput = document.getElementById('customWord');
     customWord = (cwInput && cwInput.value ? cwInput.value : '').trim();
+    if (!customWord) {
+      alert('カスタム問題では単語を入力してください。');
+      return;
+    }
     if (customWord.length > 15) {
       alert('カスタム単語は15文字までです。');
       return;
@@ -434,7 +465,7 @@ async function savePdfViaHtml2Canvas() {
         );
       }
 
-      const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
+      const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語', custom: 'カスタム問題' };
       const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
       pdf.save(
         `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`
@@ -571,7 +602,7 @@ async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) 
       );
     }
 
-    const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語' };
+    const contentLabels = { joshi: '助詞', hiragana: 'ひらがな', seikatsu: '生活単語', custom: 'カスタム問題' };
     const levelLabels   = { beginner: '初級', intermediate: '中級', advanced: '上級' };
     pdf.save(
       `プリント_${contentLabels[contentSel]}_${levelLabels[levelSel]}_${dateStamp()}.pdf`

@@ -80,7 +80,7 @@
 
     <!-- 何ができるか：箇条書き -->
     <ul class="hero-list">
-      <li><i class="fas fa-check"></i> 助詞・ひらがな・生活単語に対応</li>
+      <li><i class="fas fa-check"></i> 助詞・ひらがな・生活単語（＋有料でカスタム問題）</li>
       <li><i class="fas fa-check"></i> 初級〜上級の3段階レベルで出題</li>
       <li><i class="fas fa-check"></i> そのまま印刷 or PDF保存できる</li>
       <li><i class="fas fa-check"></i> 登録なし・無料で今すぐ使える</li>
@@ -88,7 +88,7 @@
 
     <!-- 数字 -->
     <div class="hero-stats">
-      <div class="hero-stat"><span class="stat-num">3</span><span class="stat-label">教科対応</span></div>
+      <div class="hero-stat"><span class="stat-num">4</span><span class="stat-label">モード</span></div>
       <div class="hero-stat"><span class="stat-num">3</span><span class="stat-label">レベル設定</span></div>
       <div class="hero-stat"><span class="stat-num">0円</span><span class="stat-label">完全無料</span></div>
     </div>
@@ -125,10 +125,11 @@
         <div class="how-step-icon">📝</div>
         <h3 class="how-step-title">教科を選ぶ</h3>
         <p class="how-step-desc">
-          3種類から選ぶだけ。<br>
+          4種類から選ぶだけ。<br>
           ・助詞（は・を・に）<br>
           ・ひらがな（あ〜ん）<br>
-          ・生活単語（くつ・かばん）
+          ・生活単語（くつ・かばん）<br>
+          ・カスタム問題（自分の単語・有料）
         </p>
       </div>
       <div class="how-step-arrow"><i class="fas fa-chevron-right"></i></div>
@@ -211,7 +212,7 @@
           <span class="step-badge">STEP 1</span>
           <h3 class="step-title">プリントの内容を選ぼう</h3>
         </div>
-        <div class="option-grid" id="contentOptions">
+        <div class="option-grid option-grid--four" id="contentOptions">
           <button class="option-btn content-btn active" data-value="joshi" aria-pressed="true">
             <span class="option-icon">📝</span>
             <span class="option-label">助詞</span>
@@ -226,6 +227,12 @@
             <span class="option-icon">🏠</span>
             <span class="option-label">生活単語</span>
             <span class="option-desc">くつ・かばん など</span>
+          </button>
+          <button type="button" class="option-btn content-btn content-btn--custom" data-value="custom" aria-pressed="false" id="contentBtnCustom" title="有料版のみ">
+            <span class="option-icon">✏️</span>
+            <span class="option-label">カスタム問題</span>
+            <span class="option-desc">自分の単語で</span>
+            <span class="option-pro-badge">PRO</span>
           </button>
         </div>
       </div>
@@ -292,13 +299,13 @@
             </select>
           </div>
         </div>
-        <div class="settings-row settings-row--custom">
+        <div class="settings-row settings-row--custom" id="customWordRow" hidden>
           <div class="setting-item setting-item--full">
             <label for="customWord" class="setting-label">
-              <i class="fas fa-pen"></i> カスタム単語（有料）
+              <i class="fas fa-pen"></i> カスタム問題の単語
             </label>
             <input type="text" id="customWord" class="setting-input" maxlength="15" autocomplete="off" placeholder="例：れんしゅう" disabled aria-describedby="customWordHint" />
-            <p class="setting-hint" id="customWordHint">有料プランで利用できます（生活単語・最大15文字）。</p>
+            <p class="setting-hint" id="customWordHint">「カスタム問題」を選ぶと入力できます（最大15文字）。</p>
           </div>
         </div>
 
@@ -515,6 +522,7 @@
       <div class="plan-modal-pitch" data-modal-panel="pitch">
         <h3 class="plan-pitch-title" id="planPitchHeading">有料版でできること</h3>
         <ul class="plan-pitch-list">
+          <li>カスタム問題（自分の単語でプリント）が使える</li>
           <li>上級レベルが使える</li>
           <li>15問／20問／25問／30問が選べる（＋4問から）</li>
           <li>解答付きプリントが使える</li>

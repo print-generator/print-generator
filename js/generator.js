@@ -49,6 +49,28 @@ function getSeikatsuChoicesFromPool(word, pool) {
   return [word, ...pickRandom(wrong, 2)].sort(() => Math.random() - 0.5);
 }
 
+function hiraToKataChar(c) {
+  const code = c.charCodeAt(0);
+  if (code >= 0x3041 && code <= 0x3096) {
+    return String.fromCharCode(code + 0x60);
+  }
+  return c;
+}
+
+function toKatakanaString(s) {
+  return String(s || '')
+    .split('')
+    .map(hiraToKataChar)
+    .join('');
+}
+
+function mapBeginnerSetToKatakana(set) {
+  return {
+    group: toKatakanaString(set.group),
+    chars: (set.chars || []).map((c) => toKatakanaString(c)),
+  };
+}
+
 const LS_LAST_PRINT_SIG = 'homePrint_lastPrintSig';
 
 function readLastPrintSig() {
@@ -76,7 +98,7 @@ function today() {
    プリントHTML全体を生成して返す
    （print-page 単位で組み、ブラウザ印刷のカード途中改ページを避ける）
 ───────────────────────────────────────────── */
-function generatePrintHTML(content, level, count, showName, showDate, customPayload, includeAnswers, allowKatakana) {
+function generatePrintHTML(content, level, count, showName, showDate, customPayload, includeAnswers, allowKatakana, kanaMode) {
   const meta   = buildMeta(content, level);
   const header = buildPrintHeader(meta, showName, showDate);
   const instr  = buildInstruction(meta);
@@ -86,14 +108,14 @@ function generatePrintHTML(content, level, count, showName, showDate, customPayl
   </div>`;
 
   const lastSig = readLastPrintSig();
-  let result = buildQuestionBodyStructured(content, level, count, customPayload, !!allowKatakana);
+  let result = buildQuestionBodyStructured(content, level, count, customPayload, !!allowKatakana, kanaMode || 'mix');
   for (let attempt = 0; attempt < 24; attempt++) {
     const sig = result.answers.join('\u0001');
     if (sig !== lastSig || attempt === 23) {
       writeLastPrintSig(sig);
       break;
     }
-    result = buildQuestionBodyStructured(content, level, count, customPayload, !!allowKatakana);
+    result = buildQuestionBodyStructured(content, level, count, customPayload, !!allowKatakana, kanaMode || 'mix');
   }
   const { cardHtmls, answers } = result;
   const perPage   = getCardsPerPage(content, level);
@@ -277,7 +299,7 @@ function buildInstruction(meta) {
 /* ─────────────────────────────────────────────
    問題本体ビルダー（コンテンツ×レベル）
 ───────────────────────────────────────────── */
-function buildQuestionBodyStructured(content, level, count, customPayload, allowKatakana) {
+function buildQuestionBodyStructured(content, level, count, customPayload, allowKatakana, kanaMode) {
   if (content === 'custom') {
     const words = Array.isArray(customPayload?.words)
       ? customPayload.words
@@ -309,7 +331,7 @@ function buildQuestionBodyStructured(content, level, count, customPayload, allow
       advanced:     buildSeikatsuAdvanced,
     },
   };
-  return builders[content][level](count, '', !!allowKatakana);
+  return builders[content][level](count, '', !!allowKatakana, kanaMode || 'mix');
 }
 
 /** @deprecated 直接は使わず buildQuestionBodyStructured を優先 */
@@ -375,8 +397,17 @@ function buildJoshiAdvanced(count, _cw) {
    ひらがな
    ==================================================== */
 
-function buildHiraganaBeginner(count, _cw, _allowKatakana) {
-  const sets = pickRandom(APP_DATA.hiragana.beginner_sets, count);
+function buildHiraganaBeginner(count, _cw, allowKatakana, kanaMode) {
+  const rawSets = pickRandom(APP_DATA.hiragana.beginner_sets, count);
+  const mode = allowKatakana ? (kanaMode || 'mix') : 'hiragana';
+  const sets = rawSets.map((set, i) => {
+    if (mode === 'katakana') return mapBeginnerSetToKatakana(set);
+    if (mode === 'mix') {
+      const useKata = i % 2 === 1;
+      return useKata ? mapBeginnerSetToKatakana(set) : set;
+    }
+    return set;
+  });
   const answers = sets.map((set) => `${set.group}：${set.chars.join('・')}`);
   const cards = sets.map((set, i) => {
     const cellsHtml = set.chars.map(c => `

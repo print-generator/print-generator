@@ -523,7 +523,16 @@ body.plan-free .content-btn--custom:not(.active) {
   grid-template-columns: 1fr;
   padding-top: 0;
 }
+.settings-row--kana-mode {
+  grid-template-columns: 1fr;
+  padding-top: 0;
+}
 .settings-row--katakana .setting-item--full {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.settings-row--kana-mode .setting-item--full {
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
@@ -1596,10 +1605,12 @@ body.lp-pricing-page {
   .settings-row .setting-item { flex-direction: column; align-items: stretch; justify-content: flex-start; }
   .setting-select { width: 100%; }
   .settings-row--katakana .setting-item--full,
+  .settings-row--kana-mode .setting-item--full,
   .settings-row--answer .setting-item--full { gap: 8px; }
   .settings-row--katakana .setting-label--checkbox,
   .settings-row--answer .setting-label--checkbox { width: 100%; align-items: flex-start; }
   .settings-row--katakana .setting-hint,
+  .settings-row--kana-mode .setting-hint,
   .settings-row--answer .setting-hint { margin-top: 2px; }
   .generate-btn { padding: 16px 32px; font-size: 1rem; }
   .preview-controls { flex-direction: column; align-items: stretch; }

@@ -15,6 +15,7 @@ const isProUser = planParam === 'pro';
 let selectedContent = 'joshi';
 let selectedLevel   = 'beginner';
 let selectedCustomMode = 'trace';
+let selectedKanaMode = 'mix';
 const CUSTOM_WORD_MAX_COUNT = 8;
 const CUSTOM_WORD_MAX_LEN = 15;
 const CUSTOM_WORD_PLACEHOLDERS = [
@@ -94,11 +95,36 @@ function refreshKatakanaToggleRow() {
   } else if (hint) {
     hint.textContent = 'オン：ひらがな＋カタカナ／オフ：ひらがなのみ';
   }
+  refreshKanaModeControl();
 }
 
 function getAllowKatakana() {
   if (!isProUser) return false;
   return !!document.getElementById('includeKatakana')?.checked;
+}
+
+function getKanaMode() {
+  if (!isProUser || !getAllowKatakana()) return 'hiragana';
+  return selectedKanaMode || 'mix';
+}
+
+function refreshKanaModeControl() {
+  const row = document.getElementById('kanaModeRow');
+  const select = document.getElementById('kanaMode');
+  const hint = document.getElementById('kanaModeHint');
+  const show = isProUser && selectedContent === 'hiragana' && getAllowKatakana();
+  if (row) row.hidden = !show;
+  if (!select) return;
+  if (show) {
+    select.disabled = false;
+    selectedKanaMode = select.value || selectedKanaMode || 'mix';
+    if (hint) hint.textContent = '有料版の50音なぞり書きで、出題タイプを切り替えできます。';
+  } else {
+    select.disabled = true;
+    select.value = 'mix';
+    selectedKanaMode = 'mix';
+    if (hint) hint.textContent = '有料版で「カタカナを含める」をONにすると選べます。';
+  }
 }
 
 function openFeatureLockedModal(feature) {
@@ -341,6 +367,7 @@ function applyPlanTierToUI() {
   updateFreeGenQuotaUI();
   refreshKatakanaGenerateNote();
   refreshKatakanaToggleRow();
+  refreshKanaModeControl();
   syncModalPanelsForPlan();
   ensureCustomWordInputsReady();
   refreshCustomWordButtons();
@@ -368,6 +395,7 @@ document.querySelectorAll('.content-btn').forEach(btn => {
     btn.setAttribute('aria-pressed', 'true');
     selectedContent = btn.dataset.value;
     refreshCustomWordControl();
+    refreshKanaModeControl();
   });
 });
 
@@ -395,6 +423,14 @@ if (includeKatakanaEl) {
       includeKatakanaEl.checked = false;
       openFeatureLockedModal('katakana');
     }
+    refreshKanaModeControl();
+  });
+}
+
+const kanaModeEl = document.getElementById('kanaMode');
+if (kanaModeEl) {
+  kanaModeEl.addEventListener('change', () => {
+    selectedKanaMode = kanaModeEl.value || 'mix';
   });
 }
 
@@ -476,7 +512,8 @@ function generatePrint() {
         showDate,
         customPayload,
         wantAnswers,
-        getAllowKatakana()
+        getAllowKatakana(),
+        getKanaMode()
       );
       const sheet = document.getElementById('printSheet');
       sheet.innerHTML = html;

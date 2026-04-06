@@ -47,7 +47,7 @@
     <div class="header-logo">
       <span class="logo-icon"><i class="fas fa-star"></i></span>
       <span class="logo-text">家庭学習プリント生成</span>
-      <span class="plan-badge plan-badge--free" id="planBadge" title="URLに ?plan=pro で有料版">無料版利用中</span>
+      <span class="plan-badge plan-badge--free" id="planBadge" title="有料プランでは追加機能が使えます">無料版利用中</span>
     </div>
     <nav class="header-nav">
       <a href="#how-to-use" class="nav-link">使い方</a>
@@ -203,9 +203,6 @@
     <p class="free-plan-notice no-print" id="freePlanNotice">
       無料版は10問まで・生成5回までです
     </p>
-    <p class="free-plan-notice no-print" id="katakanaNotice">
-      カタカナは有料版で利用できます
-    </p>
 
     <section class="control-panel no-print" id="controlPanel">
 
@@ -321,6 +318,15 @@
             </select>
           </div>
         </div>
+        <div class="settings-row settings-row--katakana" id="katakanaToggleRow" hidden>
+          <div class="setting-item setting-item--full">
+            <label class="setting-label setting-label--checkbox" for="includeKatakana">
+              <input type="checkbox" id="includeKatakana" class="setting-checkbox" checked />
+              <span><i class="fas fa-font"></i> カタカナを含める</span>
+            </label>
+            <p class="setting-hint">オン：ひらがな＋カタカナ／オフ：ひらがなのみ</p>
+          </div>
+        </div>
         <div class="settings-row settings-row--custom" id="customWordRow" hidden>
           <div class="setting-item setting-item--full">
             <label for="customWord1" class="setting-label">
@@ -360,6 +366,9 @@
         </button>
         <p class="generate-quota" id="freeGenQuota" hidden>
           無料版の生成：残り 5 回（5回まで）
+        </p>
+        <p class="generate-katakana-note no-print" id="katakanaGenerateNote" hidden>
+          ※カタカナは有料版で利用できます
         </p>
         <p class="generate-note">
           <i class="fas fa-info-circle"></i> もっと使うには有料版（上級・30問・解答付きなど）
@@ -548,6 +557,7 @@
         <h3 class="plan-pitch-title" id="planPitchHeading">有料版でできること</h3>
         <ul class="plan-pitch-list">
           <li>カスタム問題（自分の単語でプリント）が使える</li>
+          <li>※カタカナは有料版で利用できます</li>
           <li>上級レベルが使える</li>
           <li>15問／20問／25問／30問が選べる（＋4問から）</li>
           <li>解答付きプリントが使える</li>
@@ -562,7 +572,7 @@
       </div>
 
       <div class="plan-modal-active-pro" data-modal-panel="pro-active" hidden>
-        <p class="plan-active-lead"><i class="fas fa-check-circle"></i> 有料版のURL（<code>?plan=pro</code>）で利用中です。</p>
+        <p class="plan-active-lead"><i class="fas fa-check-circle"></i> 有料プランをご利用中です</p>
         <ul class="plan-pitch-list">
           <li>全機能がお使いいただけます</li>
         </ul>

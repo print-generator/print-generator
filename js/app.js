@@ -17,6 +17,16 @@ let selectedLevel   = 'beginner';
 let selectedCustomMode = 'trace';
 const CUSTOM_WORD_MAX_COUNT = 8;
 const CUSTOM_WORD_MAX_LEN = 15;
+const CUSTOM_WORD_PLACEHOLDERS = [
+  '例：りんご',
+  '例：いぬ',
+  '例：くつ',
+  '例：かばん',
+  '例：じてんしゃ',
+  '例：えんぴつ',
+  '例：もも',
+  '例：とり',
+];
 
 function getEffectiveLevelForContent(content, levelFromUi) {
   if (content !== 'custom') return levelFromUi;
@@ -66,10 +76,22 @@ function updateFreeGenQuotaUI() {
   el.textContent = `無料版の生成：残り ${left} 回（${FREE_GENERATION_LIMIT}回まで）`;
 }
 
-function refreshKatakanaNotice() {
-  const el = document.getElementById('katakanaNotice');
+function refreshKatakanaGenerateNote() {
+  const el = document.getElementById('katakanaGenerateNote');
   if (!el) return;
   el.hidden = isProUser;
+}
+
+function refreshKatakanaToggleRow() {
+  const row = document.getElementById('katakanaToggleRow');
+  const cb = document.getElementById('includeKatakana');
+  if (row) row.hidden = !isProUser;
+  if (cb && !isProUser) cb.checked = false;
+}
+
+function getAllowKatakana() {
+  if (!isProUser) return false;
+  return !!document.getElementById('includeKatakana')?.checked;
 }
 
 function getFreeQuestionCountOptions() {
@@ -104,6 +126,7 @@ function updatePlanBadge() {
   const el = document.getElementById('planBadge');
   if (!el) return;
   el.textContent = isProUser ? '有料版利用中' : '無料版利用中';
+  el.title = isProUser ? '有料プランをご利用中です' : '有料プランでは追加機能が使えます';
   el.classList.toggle('plan-badge--pro', isProUser);
   el.classList.toggle('plan-badge--free', !isProUser);
 }
@@ -143,7 +166,7 @@ function refreshCustomWordControl() {
   }
 }
 
-function buildCustomWordRow(value = '', inputId = '') {
+function buildCustomWordRow(value = '', inputId = '', placeholderIndex = 0) {
   const row = document.createElement('div');
   row.className = 'custom-word-row';
   const input = document.createElement('input');
@@ -152,7 +175,8 @@ function buildCustomWordRow(value = '', inputId = '') {
   if (inputId) input.id = inputId;
   input.maxLength = CUSTOM_WORD_MAX_LEN;
   input.autocomplete = 'off';
-  input.placeholder = '例：れんしゅう';
+  input.placeholder =
+    CUSTOM_WORD_PLACEHOLDERS[placeholderIndex % CUSTOM_WORD_PLACEHOLDERS.length];
   input.value = value;
 
   const removeBtn = document.createElement('button');
@@ -188,14 +212,15 @@ function ensureCustomWordInputsReady() {
   const addBtn = document.getElementById('addCustomWordBtn');
   if (!list || !addBtn || list.dataset.ready === '1') return;
 
-  list.appendChild(buildCustomWordRow('', 'customWord1'));
+  list.appendChild(buildCustomWordRow('', 'customWord1', 0));
   list.dataset.ready = '1';
   refreshCustomWordButtons();
 
   addBtn.addEventListener('click', () => {
     if (list.children.length >= CUSTOM_WORD_MAX_COUNT) return;
     const nextId = `customWord${list.children.length + 1}`;
-    list.appendChild(buildCustomWordRow('', nextId));
+    const phIdx = list.children.length;
+    list.appendChild(buildCustomWordRow('', nextId, phIdx));
     refreshCustomWordButtons();
     const last = list.querySelector('.custom-word-row:last-child .custom-word-input');
     if (last) last.focus();
@@ -250,7 +275,8 @@ function applyPlanTierToUI() {
   refreshAnswerSheetRow();
   refreshOneClickRow();
   updateFreeGenQuotaUI();
-  refreshKatakanaNotice();
+  refreshKatakanaGenerateNote();
+  refreshKatakanaToggleRow();
   syncModalPanelsForPlan();
   ensureCustomWordInputsReady();
   refreshCustomWordButtons();
@@ -375,7 +401,7 @@ function generatePrint() {
         showDate,
         customPayload,
         wantAnswers,
-        isProUser
+        getAllowKatakana()
       );
       const sheet = document.getElementById('printSheet');
       sheet.innerHTML = html;

@@ -66,6 +66,12 @@ function updateFreeGenQuotaUI() {
   el.textContent = `無料版の生成：残り ${left} 回（${FREE_GENERATION_LIMIT}回まで）`;
 }
 
+function refreshKatakanaNotice() {
+  const el = document.getElementById('katakanaNotice');
+  if (!el) return;
+  el.hidden = isProUser;
+}
+
 function getFreeQuestionCountOptions() {
   return [6, 8, 10];
 }
@@ -244,6 +250,7 @@ function applyPlanTierToUI() {
   refreshAnswerSheetRow();
   refreshOneClickRow();
   updateFreeGenQuotaUI();
+  refreshKatakanaNotice();
   syncModalPanelsForPlan();
   ensureCustomWordInputsReady();
   refreshCustomWordButtons();
@@ -367,7 +374,8 @@ function generatePrint() {
         showName,
         showDate,
         customPayload,
-        wantAnswers
+        wantAnswers,
+        isProUser
       );
       const sheet = document.getElementById('printSheet');
       sheet.innerHTML = html;

@@ -22,6 +22,33 @@ function pickRandom(arr, n) {
   return shuffle([...arr]).slice(0, k);
 }
 
+function hasKatakana(text) {
+  return /[\u30A0-\u30FF]/.test(String(text || ''));
+}
+
+function filterOutKatakanaWords(words) {
+  return (words || []).filter((w) => !hasKatakana(w.word));
+}
+
+function filterOutKatakanaHiraganaIntermediate(items) {
+  return (items || []).filter(
+    (q) => !hasKatakana(q.word) && !(q.choices || []).some((c) => hasKatakana(c))
+  );
+}
+
+function filterOutKatakanaHiraganaAdvanced(items) {
+  return (items || []).filter(
+    (q) => !hasKatakana(q.prompt) && !hasKatakana(q.answer)
+  );
+}
+
+function getSeikatsuChoicesFromPool(word, pool) {
+  const wrong = (pool || [])
+    .filter((w) => w.word !== word)
+    .map((w) => w.word);
+  return [word, ...pickRandom(wrong, 2)].sort(() => Math.random() - 0.5);
+}
+
 const LS_LAST_PRINT_SIG = 'homePrint_lastPrintSig';
 
 function readLastPrintSig() {
@@ -49,7 +76,7 @@ function today() {
    プリントHTML全体を生成して返す
    （print-page 単位で組み、ブラウザ印刷のカード途中改ページを避ける）
 ───────────────────────────────────────────── */
-function generatePrintHTML(content, level, count, showName, showDate, customPayload, includeAnswers) {
+function generatePrintHTML(content, level, count, showName, showDate, customPayload, includeAnswers, allowKatakana) {
   const meta   = buildMeta(content, level);
   const header = buildPrintHeader(meta, showName, showDate);
   const instr  = buildInstruction(meta);
@@ -59,14 +86,14 @@ function generatePrintHTML(content, level, count, showName, showDate, customPayl
   </div>`;
 
   const lastSig = readLastPrintSig();
-  let result = buildQuestionBodyStructured(content, level, count, customPayload);
+  let result = buildQuestionBodyStructured(content, level, count, customPayload, !!allowKatakana);
   for (let attempt = 0; attempt < 24; attempt++) {
     const sig = result.answers.join('\u0001');
     if (sig !== lastSig || attempt === 23) {
       writeLastPrintSig(sig);
       break;
     }
-    result = buildQuestionBodyStructured(content, level, count, customPayload);
+    result = buildQuestionBodyStructured(content, level, count, customPayload, !!allowKatakana);
   }
   const { cardHtmls, answers } = result;
   const perPage   = getCardsPerPage(content, level);
@@ -250,7 +277,7 @@ function buildInstruction(meta) {
 /* ─────────────────────────────────────────────
    問題本体ビルダー（コンテンツ×レベル）
 ───────────────────────────────────────────── */
-function buildQuestionBodyStructured(content, level, count, customPayload) {
+function buildQuestionBodyStructured(content, level, count, customPayload, allowKatakana) {
   if (content === 'custom') {
     const words = Array.isArray(customPayload?.words)
       ? customPayload.words
@@ -282,7 +309,7 @@ function buildQuestionBodyStructured(content, level, count, customPayload) {
       advanced:     buildSeikatsuAdvanced,
     },
   };
-  return builders[content][level](count, '');
+  return builders[content][level](count, '', !!allowKatakana);
 }
 
 /** @deprecated 直接は使わず buildQuestionBodyStructured を優先 */
@@ -348,7 +375,7 @@ function buildJoshiAdvanced(count, _cw) {
    ひらがな
    ==================================================== */
 
-function buildHiraganaBeginner(count, _cw) {
+function buildHiraganaBeginner(count, _cw, _allowKatakana) {
   const sets = pickRandom(APP_DATA.hiragana.beginner_sets, count);
   const answers = sets.map((set) => `${set.group}：${set.chars.join('・')}`);
   const cards = sets.map((set, i) => {
@@ -365,8 +392,11 @@ function buildHiraganaBeginner(count, _cw) {
   return { cardHtmls: cards, answers };
 }
 
-function buildHiraganaIntermediate(count, _cw) {
-  const data  = pickRandom(APP_DATA.hiragana.intermediate, count);
+function buildHiraganaIntermediate(count, _cw, allowKatakana) {
+  const source = allowKatakana
+    ? APP_DATA.hiragana.intermediate
+    : filterOutKatakanaHiraganaIntermediate(APP_DATA.hiragana.intermediate);
+  const data  = pickRandom(source, count);
   const answers = data.map((q) => q.word);
   const cards = data.map((q, i) => {
     const choicesHtml = q.choices.map(c =>
@@ -385,8 +415,11 @@ function buildHiraganaIntermediate(count, _cw) {
   return { cardHtmls: cards, answers };
 }
 
-function buildHiraganaAdvanced(count, _cw) {
-  const data  = pickRandom(APP_DATA.hiragana.advanced, count);
+function buildHiraganaAdvanced(count, _cw, allowKatakana) {
+  const source = allowKatakana
+    ? APP_DATA.hiragana.advanced
+    : filterOutKatakanaHiraganaAdvanced(APP_DATA.hiragana.advanced);
+  const data  = pickRandom(source, count);
   const answers = data.map((q) => q.answer);
   const cards = data.map((q, i) => {
     const boxes = q.answer.split('').map(() =>
@@ -405,8 +438,11 @@ function buildHiraganaAdvanced(count, _cw) {
    生活単語
    ==================================================== */
 
-function buildSeikatsuBeginner(count, _cw) {
-  const data = pickRandom(APP_DATA.seikatsu.words, count);
+function buildSeikatsuBeginner(count, _cw, allowKatakana) {
+  const pool = allowKatakana
+    ? APP_DATA.seikatsu.words
+    : filterOutKatakanaWords(APP_DATA.seikatsu.words);
+  const data = pickRandom(pool, count);
   const answers = data.map((q) => q.word);
   const cards = data.map((q, i) => {
     const boxes = q.word.split('').map(c =>
@@ -428,11 +464,16 @@ function buildSeikatsuBeginner(count, _cw) {
   return { cardHtmls: cards, answers };
 }
 
-function buildSeikatsuIntermediate(count, _cw) {
-  const data = pickRandom(APP_DATA.seikatsu.words, count);
+function buildSeikatsuIntermediate(count, _cw, allowKatakana) {
+  const pool = allowKatakana
+    ? APP_DATA.seikatsu.words
+    : filterOutKatakanaWords(APP_DATA.seikatsu.words);
+  const data = pickRandom(pool, count);
   const answers = data.map((q) => q.word);
   const cards = data.map((q, i) => {
-    const choices = APP_DATA.seikatsu.getChoices(q.word);
+    const choices = allowKatakana
+      ? APP_DATA.seikatsu.getChoices(q.word)
+      : getSeikatsuChoicesFromPool(q.word, pool);
     const choicesHtml = choices.map(c =>
       `<span class="choice-item">${c}</span>`
     ).join('');
@@ -449,8 +490,11 @@ function buildSeikatsuIntermediate(count, _cw) {
   return { cardHtmls: cards, answers };
 }
 
-function buildSeikatsuAdvanced(count, _cw) {
-  const data = pickRandom(APP_DATA.seikatsu.words, count);
+function buildSeikatsuAdvanced(count, _cw, allowKatakana) {
+  const pool = allowKatakana
+    ? APP_DATA.seikatsu.words
+    : filterOutKatakanaWords(APP_DATA.seikatsu.words);
+  const data = pickRandom(pool, count);
   const answers = data.map((q) => q.word);
   const cards = data.map((q, i) => {
     const boxes = q.word.split('').map(() =>

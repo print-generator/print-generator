@@ -162,6 +162,7 @@ function wrapAnswerPagesHtml(answers, meta, footer) {
 function getCardsPerPage(content, level) {
   if (content === 'maze' || content === 'maze_hiragana') return 2;
   if (content === 'sentence') return level === 'advanced' ? 4 : 5;
+  if (content === 'narabikae') return level === 'advanced' ? 4 : 5;
   if (content === 'joshi') {
     return level === 'advanced' ? 4 : 6;
   }
@@ -182,6 +183,7 @@ function getCardsPerPage(content, level) {
 function getCardsPerPageForMobilePdf(content, level) {
   if (content === 'maze' || content === 'maze_hiragana') return 1;
   if (content === 'sentence') return level === 'advanced' ? 3 : 4;
+  if (content === 'narabikae') return level === 'advanced' ? 3 : 4;
   if (content === 'joshi' || content === 'seikatsu' || content === 'custom') {
     return level === 'advanced' ? 3 : 4;
   }
@@ -237,6 +239,7 @@ function buildMeta(content, level) {
     maze:     { label: 'めいろ', emoji: '🧩' },
     maze_hiragana: { label: 'ひらがな迷路', emoji: '🧩' },
     sentence: { label: '文章問題', emoji: '📚' },
+    narabikae: { label: '並び替え', emoji: '🔀' },
   };
   const levelInfo = {
     beginner:     { label: '初級',  desc: 'なぞり書き',  badge: '🌱' },
@@ -309,7 +312,12 @@ function buildInstruction(meta) {
     sentence: {
       beginner:     'ぶんを よんで えらびましょう。',
       intermediate: 'ことばの じゅんばんを ならべましょう。',
-      advanced:     'あなうめを かんがえて かきましょう。',
+      advanced:     'ぶんを よみ、しつもんに ぶんで こたえましょう。',
+    },
+    narabikae: {
+      beginner: 'ことばを ならべて ただしい ぶんに しましょう。',
+      intermediate: '4つの ことばを ならべて ぶんを つくりましょう。',
+      advanced: 'ことばを ならべて ぶんを つくり、したに かきましょう。',
     },
   };
   const text = instructions[meta.content][meta.level];
@@ -369,6 +377,11 @@ function buildQuestionBodyStructured(content, level, count, customPayload, allow
       beginner: buildSentenceBeginner,
       intermediate: buildSentenceIntermediate,
       advanced: buildSentenceAdvanced,
+    },
+    narabikae: {
+      beginner: buildNarabikaeBeginner,
+      intermediate: buildNarabikaeIntermediate,
+      advanced: buildNarabikaeAdvanced,
     },
   };
   return builders[content][level](count, '', !!allowKatakana, kanaMode || 'mix', level);
@@ -1210,15 +1223,100 @@ function buildSentenceIllustSvg(pathD) {
 }
 
 function buildSentenceAdvanced(count) {
-  const picked = pickRandom(SENTENCE_ILLUST_TEMPLATES, count);
-  const cards = picked.map((it, i) => {
-    const [_id, subject, action, d] = it;
-    const illust = buildSentenceIllustSvg(d);
-    const inner = `<div class="sentence-illust-block">${illust}</div>
-      <div class="emoji-question-prompt">イラストをみて「だれが なにをしているか」を かこう</div>
+  const scenes = pickUniqueScenes(count);
+  const patterns = [
+    'だれが なにを していますか',
+    'だれが どこで 〜していますか',
+    'どこで なにを していますか',
+  ];
+  const cards = scenes.map((s, i) => {
+    const pattern = patterns[i % patterns.length];
+    const target = pattern === patterns[0]
+      ? `${s.who}が ${s.action}`
+      : pattern === patterns[1]
+        ? `${s.who}が ${s.where}で ${s.action}`
+        : `${s.where}で ${s.action}`;
+    const inner = `<div class="choice-sentence">${s.sentence}</div>
+      <div class="emoji-question-prompt">しつもん：${pattern}</div>
+      <div class="adv-prompt-sub">ぶんで こたえましょう</div>
       <div class="answer-line"></div>`;
     return questionCard(i + 1, inner);
   });
-  const answers = picked.map((it) => `${it[1]}が ${it[2]}`);
+  const answers = scenes.map((s, i) => {
+    const pattern = patterns[i % patterns.length];
+    if (pattern === patterns[0]) return `${s.who}が ${s.action}`;
+    if (pattern === patterns[1]) return `${s.who}が ${s.where}で ${s.action}`;
+    return `${s.where}で ${s.action}`;
+  });
+  return { cardHtmls: cards, answers };
+}
+
+const NARABIKAE_WHERE = ['こうえんで', 'がっこうで', 'いえで', 'にわで', 'みちで'];
+const NARABIKAE_SUBJECT = ['おとこのこが', 'おんなのこが', 'せんせいが', 'いぬが', 'ねこが', 'とりが', 'おかあさんが', 'おとうさんが'];
+const NARABIKAE_ACTION = ['あそんでいます', 'はしっています', 'ねています', 'たべています', 'よんでいます', 'みています'];
+const NARABIKAE_OBJECT = ['ぼーるで', 'ほんを', 'ごはんを', 'ともだちと', 'ゆっくり', 'たのしく'];
+
+function buildNarabikaeSentence(level) {
+  const subject = pickOne(NARABIKAE_SUBJECT);
+  const where = pickOne(NARABIKAE_WHERE);
+  const action = pickOne(NARABIKAE_ACTION);
+  if (level === 'beginner') {
+    const parts = [subject, where, action];
+    return { parts, answer: `${subject} ${where} ${action}` };
+  }
+  if (level === 'intermediate') {
+    const obj = pickOne(['ぼーるで', 'ほんを', 'ごはんを']);
+    const parts = [subject, where, obj, action];
+    return { parts, answer: `${subject} ${where} ${obj} ${action}` };
+  }
+  const extra = Math.random() < 0.5 ? pickOne(['たのしく', 'ゆっくり']) : pickOne(['ともだちと', 'いっしょに']);
+  const obj = pickOne(NARABIKAE_OBJECT);
+  const parts = Math.random() < 0.5
+    ? [subject, where, obj, action]
+    : [subject, where, extra, obj, action];
+  return { parts, answer: parts.join(' ') };
+}
+
+function buildNarabikaeCard(num, level) {
+  const made = buildNarabikaeSentence(level);
+  const shuffled = shuffle(made.parts);
+  const chips = shuffled.map((p) => `<span class="choice-item">${p}</span>`).join('');
+  const inner = `<div class="emoji-question-prompt">ことばを ならべかえて、ただしい ぶんを つくろう</div>
+    <div class="choices-row">${chips}</div>
+    <div class="adv-prompt-sub">こたえを したに かこう</div>
+    <div class="answer-line"></div>`;
+  return { html: questionCard(num, inner), answer: made.answer };
+}
+
+function buildNarabikaeBeginner(count) {
+  const cards = [];
+  const answers = [];
+  for (let i = 0; i < count; i++) {
+    const c = buildNarabikaeCard(i + 1, 'beginner');
+    cards.push(c.html);
+    answers.push(c.answer);
+  }
+  return { cardHtmls: cards, answers };
+}
+
+function buildNarabikaeIntermediate(count) {
+  const cards = [];
+  const answers = [];
+  for (let i = 0; i < count; i++) {
+    const c = buildNarabikaeCard(i + 1, 'intermediate');
+    cards.push(c.html);
+    answers.push(c.answer);
+  }
+  return { cardHtmls: cards, answers };
+}
+
+function buildNarabikaeAdvanced(count) {
+  const cards = [];
+  const answers = [];
+  for (let i = 0; i < count; i++) {
+    const c = buildNarabikaeCard(i + 1, 'advanced');
+    cards.push(c.html);
+    answers.push(c.answer);
+  }
   return { cardHtmls: cards, answers };
 }

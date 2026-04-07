@@ -738,6 +738,7 @@ async function savePdfViaHtml2Canvas() {
         maze: 'めいろ',
         maze_hiragana: 'ひらがな迷路',
         sentence: '文章問題',
+        narabikae: '並び替え',
       };
       pdf.save(
         `プリント_${contentLabels[contentSel]}_${getLevelLabel(levelSel, contentSel)}_${dateStamp()}.pdf`
@@ -882,6 +883,7 @@ async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) 
       maze: 'めいろ',
       maze_hiragana: 'ひらがな迷路',
       sentence: '文章問題',
+      narabikae: '並び替え',
     };
     pdf.save(
       `プリント_${contentLabels[contentSel]}_${getLevelLabel(levelSel, contentSel)}_${dateStamp()}.pdf`
@@ -956,7 +958,7 @@ function runOneClickGenerate() {
     openPlanModal('ワンクリック自動生成は有料版限定機能です。');
     return;
   }
-  const contents = ['joshi', 'hiragana', 'seikatsu', 'maze', 'sentence', 'maze_hiragana'];
+  const contents = ['joshi', 'hiragana', 'seikatsu', 'maze', 'sentence', 'narabikae', 'maze_hiragana'];
   const levels = ['beginner', 'intermediate', 'advanced'];
   const counts = getProQuestionCountOptions();
   selectedContent = contents[Math.floor(Math.random() * contents.length)];

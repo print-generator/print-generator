@@ -896,8 +896,8 @@ body.plan-free .content-btn--custom:not(.active) {
 }
 .maze-svg {
   width: 100%;
-  min-height: 105mm;
-  max-height: 128mm;
+  min-height: 98mm;
+  max-height: 120mm;
   display: block;
   background: #fff;
   border-radius: 8px;
@@ -911,7 +911,8 @@ body.plan-free .content-btn--custom:not(.active) {
   font-weight: 700;
   paint-order: stroke;
   stroke: #ffffff;
-  stroke-width: 3px;
+  stroke-width: 3.5px;
+  letter-spacing: 0.02em;
 }
 .maze-label--start { fill: #15803d; }
 .maze-label--goal { fill: #b91c1c; }
@@ -948,8 +949,6 @@ body.plan-free .content-btn--custom:not(.active) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
-  color: #64748b;
   background: #ffffff;
 }
 
@@ -1666,9 +1665,38 @@ body.lp-pricing-page {
   .features-grid { grid-template-columns: repeat(2,1fr); }
   .plan-cta-inner { flex-direction: column; text-align: center; }
   .plan-cta-desc { margin: 0 auto; }
+  .maze-card { padding: 4px 3px 8px; }
+  .maze-svg { min-height: 84mm; max-height: 98mm; }
+  .maze-label { font-size: 10.5px; stroke-width: 3.2px; }
 }
 
 @media (max-width: 600px) {
+  .maze-card {
+    padding: 5px 3px 8px;
+    border-radius: 9px;
+  }
+  .maze-svg {
+    min-height: 72mm;
+    max-height: 86mm;
+    border-radius: 7px;
+  }
+  .maze-label {
+    font-size: 10px;
+    stroke-width: 3px;
+  }
+  .maze-word-question {
+    margin-top: 6px;
+    font-size: 0.8rem;
+    text-align: center;
+  }
+  .maze-answer-row {
+    margin-top: 6px;
+    gap: 5px;
+  }
+  .maze-answer-box {
+    width: 30px;
+    height: 30px;
+  }
   .header-nav .nav-link { display: none; }
   .option-grid { grid-template-columns: repeat(2,1fr); gap: 8px; padding: 14px 12px; }
   .option-grid.option-grid--four { grid-template-columns: repeat(2, 1fr); }
@@ -1689,8 +1717,6 @@ body.lp-pricing-page {
   .settings-row--katakana .setting-hint,
   .settings-row--kana-mode .setting-hint,
   .settings-row--answer .setting-hint { margin-top: 2px; }
-  .maze-svg { min-height: 86mm; max-height: 110mm; }
-  .maze-label { font-size: 11px; }
   .generate-btn { padding: 16px 32px; font-size: 1rem; }
   .preview-controls { flex-direction: column; align-items: stretch; }
   .preview-actions { justify-content: center; }
@@ -1905,8 +1931,8 @@ body.lp-pricing-page {
     margin-bottom: 1.5mm !important;
   }
   .maze-svg {
-    min-height: 120mm !important;
-    max-height: 130mm !important;
+    min-height: 110mm !important;
+    max-height: 124mm !important;
   }
   .maze-answer-box {
     width: 9mm;

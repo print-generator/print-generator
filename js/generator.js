@@ -840,10 +840,10 @@ function getNodeOffsetMap(w, h, cell, intensity) {
   return map;
 }
 
-function pointWithOffset(x, y, pad, cell, offsetMap) {
+function pointWithOffset(x, y, pad, cell, offsetMap, originX, originY) {
   const ox = offsetMap ? offsetMap[y][x][0] : 0;
   const oy = offsetMap ? offsetMap[y][x][1] : 0;
-  return [pad + x * cell + ox, pad + y * cell + oy];
+  return [originX + pad + x * cell + ox, originY + pad + y * cell + oy];
 }
 
 function wallSegmentPath(x1, y1, x2, y2, smooth) {
@@ -853,10 +853,39 @@ function wallSegmentPath(x1, y1, x2, y2, smooth) {
   return `M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}`;
 }
 
+function getMazeLabelProfile() {
+  let width = 1200;
+  let ua = '';
+  try {
+    width = window.innerWidth || 1200;
+    ua = navigator.userAgent || '';
+  } catch (_e) {
+    // ignore
+  }
+  const isIPhone = /iPhone/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const isMobileWidth = width <= 768;
+  if (isIPhone && isMobileWidth) {
+    return { offsetCoef: 0.98, edgePadX: 28, edgePadY: 14 };
+  }
+  if (isAndroid && isMobileWidth) {
+    return { offsetCoef: 1.04, edgePadX: 26, edgePadY: 13 };
+  }
+  if (isMobileWidth) {
+    return { offsetCoef: 1.0, edgePadX: 26, edgePadY: 13 };
+  }
+  return { offsetCoef: 0.9, edgePadX: 24, edgePadY: 12 };
+}
+
 function buildMazeSvgWithLetters(model, lettersOnPath) {
   const pad = 8;
-  const width = model.w * model.cell + pad * 2;
-  const height = model.h * model.cell + pad * 2;
+  const labelPad = Math.max(18, Math.floor(model.cell * 0.95));
+  const mazeWidth = model.w * model.cell + pad * 2;
+  const mazeHeight = model.h * model.cell + pad * 2;
+  const width = mazeWidth + labelPad * 2;
+  const height = mazeHeight + labelPad * 2;
+  const originX = labelPad;
+  const originY = labelPad;
   const smooth = model.type === 'soft' || model.type === 'single';
   const distort = model.type === 'distort';
   const offsetMap = distort ? getNodeOffsetMap(model.w, model.h, model.cell, 0.1) : null;
@@ -869,30 +898,30 @@ function buildMazeSvgWithLetters(model, lettersOnPath) {
     for (let x = 0; x < model.w; x++) {
       const c = model.cells[y][x];
       if (c.top && !shouldSkipBorderWall(x, y, 'top')) {
-        const a = pointWithOffset(x, y, pad, model.cell, offsetMap);
-        const b = pointWithOffset(x + 1, y, pad, model.cell, offsetMap);
+        const a = pointWithOffset(x, y, pad, model.cell, offsetMap, originX, originY);
+        const b = pointWithOffset(x + 1, y, pad, model.cell, offsetMap, originX, originY);
         wallPaths.push(wallSegmentPath(a[0], a[1], b[0], b[1], smooth));
       }
       if (c.left && !shouldSkipBorderWall(x, y, 'left')) {
-        const a = pointWithOffset(x, y, pad, model.cell, offsetMap);
-        const b = pointWithOffset(x, y + 1, pad, model.cell, offsetMap);
+        const a = pointWithOffset(x, y, pad, model.cell, offsetMap, originX, originY);
+        const b = pointWithOffset(x, y + 1, pad, model.cell, offsetMap, originX, originY);
         wallPaths.push(wallSegmentPath(a[0], a[1], b[0], b[1], smooth));
       }
       if (x === model.w - 1 && c.right && !shouldSkipBorderWall(x, y, 'right')) {
-        const a = pointWithOffset(x + 1, y, pad, model.cell, offsetMap);
-        const b = pointWithOffset(x + 1, y + 1, pad, model.cell, offsetMap);
+        const a = pointWithOffset(x + 1, y, pad, model.cell, offsetMap, originX, originY);
+        const b = pointWithOffset(x + 1, y + 1, pad, model.cell, offsetMap, originX, originY);
         wallPaths.push(wallSegmentPath(a[0], a[1], b[0], b[1], smooth));
       }
       if (y === model.h - 1 && c.bottom && !shouldSkipBorderWall(x, y, 'bottom')) {
-        const a = pointWithOffset(x, y + 1, pad, model.cell, offsetMap);
-        const b = pointWithOffset(x + 1, y + 1, pad, model.cell, offsetMap);
+        const a = pointWithOffset(x, y + 1, pad, model.cell, offsetMap, originX, originY);
+        const b = pointWithOffset(x + 1, y + 1, pad, model.cell, offsetMap, originX, originY);
         wallPaths.push(wallSegmentPath(a[0], a[1], b[0], b[1], smooth));
       }
     }
   }
   const center = (cx, cy) => {
-    const a = pointWithOffset(cx, cy, pad, model.cell, offsetMap);
-    const b = pointWithOffset(cx + 1, cy + 1, pad, model.cell, offsetMap);
+    const a = pointWithOffset(cx, cy, pad, model.cell, offsetMap, originX, originY);
+    const b = pointWithOffset(cx + 1, cy + 1, pad, model.cell, offsetMap, originX, originY);
     return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   };
   const s = center(model.start.x, model.start.y);
@@ -902,12 +931,14 @@ function buildMazeSvgWithLetters(model, lettersOnPath) {
     return `<text class="maze-char-on-path" x="${p[0]}" y="${p[1]}" text-anchor="middle" dominant-baseline="middle">${escapeHtmlPrint(m.char)}</text>`;
   }).join('');
   const cls = model.type === 'soft' ? 'maze-walls maze-walls--curve' : 'maze-walls';
+  const labelProfile = getMazeLabelProfile();
   const labelPos = (p) => {
-    const m = model.cell * 0.64;
-    if (p.side === 'top') return [center(p.x, p.y)[0], center(p.x, p.y)[1] - m];
-    if (p.side === 'bottom') return [center(p.x, p.y)[0], center(p.x, p.y)[1] + m];
-    if (p.side === 'left') return [center(p.x, p.y)[0] - m, center(p.x, p.y)[1]];
-    return [center(p.x, p.y)[0] + m, center(p.x, p.y)[1]];
+    const c = center(p.x, p.y);
+    const m = model.cell * labelProfile.offsetCoef;
+    if (p.side === 'top') return [c[0], Math.max(labelProfile.edgePadY, c[1] - m)];
+    if (p.side === 'bottom') return [c[0], Math.min(height - labelProfile.edgePadY, c[1] + m)];
+    if (p.side === 'left') return [Math.max(labelProfile.edgePadX, c[0] - m), c[1]];
+    return [Math.min(width - labelProfile.edgePadX, c[0] + m), c[1]];
   };
   const sl = labelPos(model.start);
   const gl = labelPos(model.goal);
@@ -985,7 +1016,7 @@ function buildHiraganaMazeByLevel(count, _cw, _allowKatakana, _kanaMode, levelAr
       if (!letters) continue;
       const svg = buildMazeSvgWithLetters(model, letters);
       const boxes = [...picked.word]
-        .map((ch) => `<div class="maze-answer-box">${escapeHtmlPrint(ch)}</div>`)
+        .map(() => '<div class="maze-answer-box"></div>')
         .join('');
       cards.push(questionCard(i + 1, `<div class="maze-card">${svg}<div class="maze-word-question">ルートの もじを よんで、ならべると なに？</div><div class="maze-answer-row">${boxes}</div></div>`));
       answers.push(`${picked.word}（${picked.category}）`);

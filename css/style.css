@@ -952,6 +952,29 @@ body.plan-free .content-btn--custom:not(.active) {
   background: #ffffff;
 }
 
+.sentence-illust-block {
+  display: flex;
+  justify-content: center;
+  margin: 2px 0 6px;
+}
+.sentence-illust-svg {
+  width: 72px;
+  height: 72px;
+}
+.sentence-illust-frame {
+  fill: #ffffff;
+  stroke: #334155;
+  stroke-width: 1.8;
+}
+.sentence-illust-line,
+.sentence-illust-head {
+  fill: none;
+  stroke: #111827;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* ============================================
    有料プランCTAバナー
    ============================================ */
@@ -1976,6 +1999,20 @@ body.lp-pricing-page {
   .maze-goal {
     width: 4.8mm !important;
     height: 4.8mm !important;
+  }
+  .sentence-illust-block {
+    margin: 0.5mm 0 1.2mm !important;
+  }
+  .sentence-illust-svg {
+    width: 18mm !important;
+    height: 18mm !important;
+  }
+  .sentence-illust-frame {
+    stroke-width: 1.2pt !important;
+  }
+  .sentence-illust-line,
+  .sentence-illust-head {
+    stroke-width: 1.6pt !important;
   }
 
   .questions-grid .question-card:last-child {

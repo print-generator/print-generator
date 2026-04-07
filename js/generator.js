@@ -233,9 +233,9 @@ function buildMeta(content, level) {
     joshi:    { label: '助詞',   emoji: '📝' },
     hiragana: { label: '50音', emoji: '🔤' },
     seikatsu: { label: '生活単語', emoji: '🏠' },
-    custom:   { label: 'カスタム問題', emoji: '✏️' },
+    custom:   { label: '好きな単語（なぞり、試写）', emoji: '✏️' },
     maze:     { label: 'めいろ', emoji: '🧩' },
-    maze_hiragana: { label: 'ひらがな迷路', emoji: '🔤' },
+    maze_hiragana: { label: 'ひらがな迷路', emoji: '🧩' },
     sentence: { label: '文章問題', emoji: '📚' },
   };
   const levelInfo = {
@@ -996,6 +996,13 @@ const HIRAGANA_MAZE_WORDS = {
 
 let LAST_HIRAGANA_MAZE_CATEGORY = '';
 let LAST_HIRAGANA_MAZE_WORD = '';
+const HIRAGANA_CATEGORY_LABEL_JA = {
+  food: 'たべもの',
+  fruit: 'くだもの',
+  animal: 'どうぶつ',
+  vehicle: 'のりもの',
+  transport: 'のりもの',
+};
 
 function pickHiraganaMazeWord(categoryArg) {
   const keys = categoryArg && categoryArg !== 'all' && HIRAGANA_MAZE_WORDS[categoryArg]
@@ -1050,7 +1057,8 @@ function buildHiraganaMazeByLevel(count, _cw, _allowKatakana, _kanaMode, levelAr
         .map(() => '<div class="maze-answer-box"></div>')
         .join('');
       cards.push(questionCard(i + 1, `<div class="maze-card maze-card--hiragana">${svg}<div class="maze-word-question">ルートの もじを よんで、ならべると なに？</div><div class="maze-answer-row">${boxes}</div></div>`));
-      answers.push(`${picked.word}（${picked.category}）`);
+      const catJa = HIRAGANA_CATEGORY_LABEL_JA[picked.category] || picked.category;
+      answers.push(`${picked.word}（${catJa}）`);
       done = true;
     }
   }
@@ -1058,76 +1066,159 @@ function buildHiraganaMazeByLevel(count, _cw, _allowKatakana, _kanaMode, levelAr
 }
 
 const SENTENCE_WHERE = ['こうえん', 'がっこう', 'いえ', 'どうぶつえん', 'うみ', 'みち', 'きょうしつ', 'こうてい'];
-const SENTENCE_WHO = [
-  { word: 'おとこのこ', type: 'human' },
-  { word: 'おんなのこ', type: 'human' },
-  { word: 'せんせい', type: 'human' },
-  { word: 'いぬ', type: 'animal' },
-  { word: 'ねこ', type: 'animal' },
-  { word: 'とり', type: 'animal' },
-  { word: 'おかあさん', type: 'human' },
-  { word: 'おとうさん', type: 'human' },
+const SENTENCE_SUBJECTS = [
+  { word: 'おとこのこ', kind: 'human' },
+  { word: 'おんなのこ', kind: 'human' },
+  { word: 'せんせい', kind: 'human' },
+  { word: 'いぬ', kind: 'animal' },
+  { word: 'ねこ', kind: 'animal' },
+  { word: 'とり', kind: 'animal' },
+  { word: 'おかあさん', kind: 'human' },
+  { word: 'おとうさん', kind: 'human' },
 ];
 const SENTENCE_ACTIONS = [
-  { text: 'あそんでいます', type: 'any' },
-  { text: 'あるいています', type: 'any' },
-  { text: 'たべています', type: 'any' },
-  { text: 'ねています', type: 'any' },
-  { text: 'はしっています', type: 'any' },
-  { text: 'よんでいます', type: 'human' },
-  { text: 'みています', type: 'any' },
-  { text: 'べんきょうしています', type: 'human' },
+  { text: 'あそんでいます', allow: ['human', 'animal'] },
+  { text: 'はしっています', allow: ['human', 'animal'] },
+  { text: 'あるいています', allow: ['human', 'animal'] },
+  { text: 'ねています', allow: ['human', 'animal'] },
+  { text: 'たべています', allow: ['human', 'animal'] },
+  { text: 'よんでいます', allow: ['human'] },
+  { text: 'みています', allow: ['human', 'animal'] },
+  { text: 'べんきょうしています', allow: ['human'] },
 ];
 
-function pickSentenceActionFor(subjectType) {
-  const pool = SENTENCE_ACTIONS.filter((a) => a.type === 'any' || a.type === subjectType);
-  return pickOne(pool);
-}
-
-function makeNaturalSentenceSet() {
+function buildSentenceScene() {
   const where = pickOne(SENTENCE_WHERE);
-  const who = pickOne(SENTENCE_WHO);
-  const action = pickSentenceActionFor(who.type);
-  const text = `${where}で ${who.word}が ${action.text}`;
-  return { where: `${where}で`, who: `${who.word}が`, action: action.text, text };
+  const subject = pickOne(SENTENCE_SUBJECTS);
+  const action = pickOne(SENTENCE_ACTIONS.filter((a) => a.allow.includes(subject.kind)));
+  return {
+    where,
+    who: subject.word,
+    action: action.text,
+    sentence: `${where}で ${subject.word}が ${action.text}。`,
+  };
 }
 
-function build3Choices(correct, pool) {
+function pickUniqueScenes(n) {
+  const out = [];
+  const used = new Set();
+  let guard = 0;
+  while (out.length < n && guard < n * 20) {
+    const s = buildSentenceScene();
+    const sig = `${s.where}|${s.who}|${s.action}`;
+    if (!used.has(sig)) {
+      used.add(sig);
+      out.push(s);
+    }
+    guard += 1;
+  }
+  while (out.length < n) out.push(buildSentenceScene());
+  return out;
+}
+
+function buildThreeChoices(correct, pool) {
   const wrong = shuffle(pool.filter((v) => v !== correct)).slice(0, 2);
   return shuffle([correct, ...wrong]);
 }
 
 function buildSentenceBeginner(count) {
-  const data = Array.from({ length: count }, () => makeNaturalSentenceSet());
-  const cards = data.map((q, i) => {
-    const whereChoices = build3Choices(q.where, SENTENCE_WHERE.map((v) => `${v}で`));
-    const whoChoices = build3Choices(q.who, SENTENCE_WHO.map((v) => `${v.word}が`));
-    const actionChoices = build3Choices(q.action, SENTENCE_ACTIONS.map((v) => v.text));
-    const toRow = (label, arr) => `<div class="choices-row"><span class="choice-label">${label}</span>${arr.map((c) => `<span class="choice-item">${c}</span>`).join('')}</div>`;
-    return questionCard(i + 1, `<div class="choice-sentence">${q.text}</div>${toRow('どこで？', whereChoices)}${toRow('だれが？', whoChoices)}${toRow('なにをしている？', actionChoices)}`);
+  const scenes = pickUniqueScenes(count);
+  const qKinds = ['who', 'where', 'action'];
+  const cards = scenes.map((s, i) => {
+    const qKind = qKinds[i % qKinds.length];
+    const questionText =
+      qKind === 'who' ? 'だれが？' : qKind === 'where' ? 'どこで？' : 'なにをしている？';
+    const choicePool =
+      qKind === 'who'
+        ? SENTENCE_SUBJECTS.map((x) => x.word)
+        : qKind === 'where'
+          ? SENTENCE_WHERE
+          : SENTENCE_ACTIONS.map((x) => x.text);
+    const correct = qKind === 'who' ? s.who : qKind === 'where' ? s.where : s.action;
+    const choices = buildThreeChoices(correct, choicePool);
+    const choicesHtml = choices.map((c) => `<span class="choice-item">${c}</span>`).join('');
+    const inner = `<div class="choice-sentence">${s.sentence}</div>
+      <div class="emoji-question-prompt">しつもん：${questionText}</div>
+      <div class="choices-row">${choicesHtml}</div>`;
+    return questionCard(i + 1, inner);
   });
-  return { cardHtmls: cards, answers: data.map((q) => `${q.where}/${q.who}/${q.action}`) };
+  const answers = scenes.map((s, i) => {
+    const qKind = qKinds[i % qKinds.length];
+    return qKind === 'who' ? s.who : qKind === 'where' ? s.where : s.action;
+  });
+  return { cardHtmls: cards, answers };
 }
 
 function buildSentenceIntermediate(count) {
-  const data = Array.from({ length: count }, () => makeNaturalSentenceSet());
-  const cards = data.map((q, i) => {
-    const shuffled = shuffle([q.where, q.who, q.action]);
-    return questionCard(i + 1, `<div class="emoji-question-prompt">「どこで → だれが → なにをしている」の じゅんで ならべよう</div><div class="choices-row">${shuffled.map((s) => `<span class="choice-item">${s}</span>`).join('')}</div>`);
+  const scenes = pickUniqueScenes(count);
+  const qKinds = ['who', 'where', 'action'];
+  const cards = scenes.map((s, i) => {
+    const qKind = qKinds[i % qKinds.length];
+    const questionText =
+      qKind === 'who' ? 'だれが？' : qKind === 'where' ? 'どこで？' : 'なにをしている？';
+    const inner = `<div class="choice-sentence">${s.sentence}</div>
+      <div class="emoji-question-prompt">しつもん：${questionText}（ことばで かこう）</div>
+      <div class="answer-line"></div>`;
+    return questionCard(i + 1, inner);
   });
-  return { cardHtmls: cards, answers: data.map((q) => `${q.where} ${q.who} ${q.action}`) };
+  const answers = scenes.map((s, i) => {
+    const qKind = qKinds[i % qKinds.length];
+    return qKind === 'who' ? s.who : qKind === 'where' ? s.where : s.action;
+  });
+  return { cardHtmls: cards, answers };
+}
+
+const SENTENCE_ILLUST_TEMPLATES = [
+  ['boy_run', 'おとこのこ', 'はしっている', 'M20 70 L40 30 L60 70 M40 40 L20 50 M40 40 L60 52'],
+  ['girl_read', 'おんなのこ', 'よんでいる', 'M20 70 L38 34 L56 70 M30 52 L50 52 M27 56 L50 56'],
+  ['dog_sleep', 'いぬ', 'ねている', 'M20 65 Q36 44 56 64 M22 66 L56 66 M24 70 L34 70'],
+  ['cat_eat', 'ねこ', 'たべている', 'M18 62 Q36 42 58 62 M52 66 L62 66 M16 40 L24 48 M28 38 L36 48'],
+  ['teacher_walk', 'せんせい', 'あるいている', 'M20 70 L42 30 L64 70 M42 42 L56 54'],
+  ['bird_watch', 'とり', 'みている', 'M18 58 Q34 42 52 58 M34 58 L30 68 M38 58 L44 68'],
+  ['mother_study', 'おかあさん', 'べんきょうしている', 'M20 70 L40 32 L60 70 M30 48 L52 48 M30 52 L52 52'],
+  ['father_play', 'おとうさん', 'あそんでいる', 'M22 70 L40 30 L58 70 M24 56 L56 44'],
+  ['boy_eat', 'おとこのこ', 'たべている', 'M20 70 L40 30 L60 70 M32 50 L50 50 M50 50 L60 44'],
+  ['girl_run', 'おんなのこ', 'はしっている', 'M22 70 L42 32 L62 70 M22 58 L38 50'],
+  ['dog_walk', 'いぬ', 'あるいている', 'M20 64 Q36 46 56 64 M20 68 L56 68'],
+  ['cat_sleep', 'ねこ', 'ねている', 'M20 65 Q36 46 56 65 M22 66 L56 66'],
+  ['teacher_read', 'せんせい', 'よんでいる', 'M22 70 L42 30 L62 70 M30 50 L54 50 M30 54 L54 54'],
+  ['bird_eat', 'とり', 'たべている', 'M18 58 Q34 42 52 58 M52 58 L62 54'],
+  ['mother_watch', 'おかあさん', 'みている', 'M22 70 L42 32 L62 70 M46 45 L58 45'],
+  ['father_run', 'おとうさん', 'はしっている', 'M22 70 L42 30 L62 70 M24 56 L38 50'],
+  ['boy_walk', 'おとこのこ', 'あるいている', 'M20 70 L40 30 L60 70 M24 56 L38 56'],
+  ['girl_sleep', 'おんなのこ', 'ねている', 'M18 66 Q36 44 58 66 M22 68 L56 68'],
+  ['dog_watch', 'いぬ', 'みている', 'M20 64 Q36 46 56 64 M56 62 L62 58'],
+  ['cat_run', 'ねこ', 'はしっている', 'M18 62 Q36 42 58 62 M20 40 L28 48 M32 38 L40 48'],
+  ['teacher_study', 'せんせい', 'べんきょうしている', 'M20 70 L40 32 L60 70 M28 48 L52 48'],
+  ['bird_walk', 'とり', 'あるいている', 'M18 58 Q34 42 52 58 M30 58 L28 68 M38 58 L42 68'],
+  ['mother_read', 'おかあさん', 'よんでいる', 'M20 70 L40 32 L60 70 M30 50 L52 50'],
+  ['father_eat', 'おとうさん', 'たべている', 'M20 70 L40 30 L60 70 M48 50 L60 44'],
+  ['boy_watch', 'おとこのこ', 'みている', 'M20 70 L40 30 L60 70 M44 46 L56 46'],
+  ['girl_walk', 'おんなのこ', 'あるいている', 'M22 70 L42 32 L62 70 M24 56 L40 56'],
+  ['dog_run', 'いぬ', 'はしっている', 'M20 64 Q36 46 56 64 M20 68 L56 68 M42 64 L56 56'],
+  ['cat_watch', 'ねこ', 'みている', 'M18 62 Q36 42 58 62 M56 60 L62 56'],
+  ['teacher_play', 'せんせい', 'あそんでいる', 'M22 70 L42 30 L62 70 M24 56 L56 44'],
+  ['bird_sleep', 'とり', 'ねている', 'M18 58 Q34 42 52 58 M22 60 L50 60'],
+];
+
+function buildSentenceIllustSvg(pathD) {
+  return `<svg class="sentence-illust-svg" viewBox="0 0 80 80" role="img" aria-label="イラスト">
+    <rect x="1" y="1" width="78" height="78" rx="8" ry="8" class="sentence-illust-frame"></rect>
+    <path d="${pathD}" class="sentence-illust-line"></path>
+    <circle cx="40" cy="18" r="7" class="sentence-illust-head"></circle>
+  </svg>`;
 }
 
 function buildSentenceAdvanced(count) {
-  const data = Array.from({ length: count }, () => makeNaturalSentenceSet());
-  const cards = data.map((q, i) => {
-    const which = pickOne(['where', 'who', 'action']);
-    const blanked = {
-      where: which === 'where' ? '＿＿＿で' : q.where,
-      who: which === 'who' ? '＿＿＿が' : q.who,
-      action: which === 'action' ? '＿＿＿＿＿＿' : q.action,
-    };
-    return questionCard(i + 1, `<div class="desc-sentence">${blanked.where} ${blanked.who} ${blanked.action}</div><div class="adv-prompt-sub">（どこで・だれが・なにをしている）を かんがえて うめよう</div><div class="answer-line"></div>`);
+  const picked = pickRandom(SENTENCE_ILLUST_TEMPLATES, count);
+  const cards = picked.map((it, i) => {
+    const [_id, subject, action, d] = it;
+    const illust = buildSentenceIllustSvg(d);
+    const inner = `<div class="sentence-illust-block">${illust}</div>
+      <div class="emoji-question-prompt">イラストをみて「だれが なにをしているか」を かこう</div>
+      <div class="answer-line"></div>`;
+    return questionCard(i + 1, inner);
   });
-  return { cardHtmls: cards, answers: data.map((q) => `${q.where} ${q.who} ${q.action}`) };
+  const answers = picked.map((it) => `${it[1]}が ${it[2]}`);
+  return { cardHtmls: cards, answers };
 }

@@ -754,20 +754,31 @@ function openExtraWalls(cells, amount) {
   }
 }
 
-function randomStartGoal(w, h) {
-  const starts = [];
+function buildBorderPoints(w, h) {
+  const pts = [];
   for (let x = 0; x < w; x++) {
-    starts.push([x, 0], [x, h - 1]);
+    pts.push({ x, y: 0, side: 'top' });
+    pts.push({ x, y: h - 1, side: 'bottom' });
   }
   for (let y = 1; y < h - 1; y++) {
-    starts.push([0, y], [w - 1, y]);
+    pts.push({ x: 0, y, side: 'left' });
+    pts.push({ x: w - 1, y, side: 'right' });
   }
-  const start = pickOne(starts);
-  let goal = pickOne(starts);
+  return pts;
+}
+
+function randomStartGoal(w, h) {
+  const pts = buildBorderPoints(w, h);
+  const start = pickOne(pts);
+  let goal = pickOne(pts);
   let guard = 0;
-  while ((Math.abs(goal[0] - start[0]) + Math.abs(goal[1] - start[1])) < Math.floor((w + h) * 0.75) && guard < 80) {
-    goal = pickOne(starts);
+  while (
+    (goal.x === start.x && goal.y === start.y) ||
+    (Math.abs(goal.x - start.x) + Math.abs(goal.y - start.y)) < Math.floor((w + h) * 0.8)
+  ) {
+    goal = pickOne(pts);
     guard += 1;
+    if (guard > 120) break;
   }
   return { start, goal };
 }
@@ -778,14 +789,7 @@ function buildMazeModel(level, mazeType, requireMinPathLen) {
     intermediate: { w: 14, h: 10, cell: 28, width: [2.1, 3.0] },
     advanced: { w: 16, h: 12, cell: 26, width: [1.9, 2.8] },
   };
-  const typeExtra = {
-    normal: 0,
-    curve: 2,
-    distort: 3,
-    single: 0,
-    branchy: 18,
-    trap: 28,
-  };
+  const typeExtra = { normal: 8, soft: 12, curve: 12, distort: 10, single: 4, branchy: 16, trap: 24 };
   const base = { ...(confByLevel[level] || confByLevel.beginner) };
   if (mazeType === 'single') {
     base.w = Math.max(10, base.w - 2);
@@ -799,15 +803,20 @@ function buildMazeModel(level, mazeType, requireMinPathLen) {
     const cells = buildPerfectMaze(base.w, base.h);
     openExtraWalls(cells, typeExtra[mazeType] || 0);
     const { start, goal } = randomStartGoal(base.w, base.h);
-    const path = solveMazePath(cells, start, goal);
+    const path = solveMazePath(cells, [start.x, start.y], [goal.x, goal.y]);
     if (!path) continue;
     if (requireMinPathLen && path.length < requireMinPathLen) continue;
+    const degree = (x, y) =>
+      mazeNeighbors(x, y, base.w, base.h).filter(([nx, ny]) => isConnected(cells, x, y, nx, ny)).length;
+    const deadEnds = path.reduce((n, [x, y]) => n + (degree(x, y) === 1 ? 1 : 0), 0);
+    if (level === 'beginner' && deadEnds > Math.max(2, Math.floor(path.length * 0.14))) continue;
+    if (level === 'advanced' && deadEnds < Math.max(2, Math.floor(path.length * 0.08))) continue;
     return {
       w: base.w,
       h: base.h,
       cell: base.cell,
       strokeWidth: randInt(Math.round(base.width[0] * 10), Math.round(base.width[1] * 10)) / 10,
-      type: mazeType,
+      type: mazeType === 'curve' ? 'soft' : mazeType,
       cells,
       start,
       goal,
@@ -848,29 +857,33 @@ function buildMazeSvgWithLetters(model, lettersOnPath) {
   const pad = 8;
   const width = model.w * model.cell + pad * 2;
   const height = model.h * model.cell + pad * 2;
-  const smooth = model.type === 'curve' || model.type === 'single';
+  const smooth = model.type === 'soft' || model.type === 'single';
   const distort = model.type === 'distort';
   const offsetMap = distort ? getNodeOffsetMap(model.w, model.h, model.cell, 0.1) : null;
   const wallPaths = [];
+  const shouldSkipBorderWall = (x, y, side) =>
+    (model.start.x === x && model.start.y === y && model.start.side === side) ||
+    (model.goal.x === x && model.goal.y === y && model.goal.side === side);
+
   for (let y = 0; y < model.h; y++) {
     for (let x = 0; x < model.w; x++) {
       const c = model.cells[y][x];
-      if (c.top) {
+      if (c.top && !shouldSkipBorderWall(x, y, 'top')) {
         const a = pointWithOffset(x, y, pad, model.cell, offsetMap);
         const b = pointWithOffset(x + 1, y, pad, model.cell, offsetMap);
         wallPaths.push(wallSegmentPath(a[0], a[1], b[0], b[1], smooth));
       }
-      if (c.left) {
+      if (c.left && !shouldSkipBorderWall(x, y, 'left')) {
         const a = pointWithOffset(x, y, pad, model.cell, offsetMap);
         const b = pointWithOffset(x, y + 1, pad, model.cell, offsetMap);
         wallPaths.push(wallSegmentPath(a[0], a[1], b[0], b[1], smooth));
       }
-      if (x === model.w - 1 && c.right) {
+      if (x === model.w - 1 && c.right && !shouldSkipBorderWall(x, y, 'right')) {
         const a = pointWithOffset(x + 1, y, pad, model.cell, offsetMap);
         const b = pointWithOffset(x + 1, y + 1, pad, model.cell, offsetMap);
         wallPaths.push(wallSegmentPath(a[0], a[1], b[0], b[1], smooth));
       }
-      if (y === model.h - 1 && c.bottom) {
+      if (y === model.h - 1 && c.bottom && !shouldSkipBorderWall(x, y, 'bottom')) {
         const a = pointWithOffset(x, y + 1, pad, model.cell, offsetMap);
         const b = pointWithOffset(x + 1, y + 1, pad, model.cell, offsetMap);
         wallPaths.push(wallSegmentPath(a[0], a[1], b[0], b[1], smooth));
@@ -882,17 +895,28 @@ function buildMazeSvgWithLetters(model, lettersOnPath) {
     const b = pointWithOffset(cx + 1, cy + 1, pad, model.cell, offsetMap);
     return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   };
-  const s = center(model.start[0], model.start[1]);
-  const g = center(model.goal[0], model.goal[1]);
+  const s = center(model.start.x, model.start.y);
+  const g = center(model.goal.x, model.goal.y);
   const letters = (lettersOnPath || []).map((m) => {
     const p = center(m.x, m.y);
     return `<text class="maze-char-on-path" x="${p[0]}" y="${p[1]}" text-anchor="middle" dominant-baseline="middle">${escapeHtmlPrint(m.char)}</text>`;
   }).join('');
-  const cls = model.type === 'curve' ? 'maze-walls maze-walls--curve' : 'maze-walls';
+  const cls = model.type === 'soft' ? 'maze-walls maze-walls--curve' : 'maze-walls';
+  const labelPos = (p) => {
+    const m = model.cell * 0.64;
+    if (p.side === 'top') return [center(p.x, p.y)[0], center(p.x, p.y)[1] - m];
+    if (p.side === 'bottom') return [center(p.x, p.y)[0], center(p.x, p.y)[1] + m];
+    if (p.side === 'left') return [center(p.x, p.y)[0] - m, center(p.x, p.y)[1]];
+    return [center(p.x, p.y)[0] + m, center(p.x, p.y)[1]];
+  };
+  const sl = labelPos(model.start);
+  const gl = labelPos(model.goal);
   return `<svg class="maze-svg maze-type-${model.type}" viewBox="0 0 ${width} ${height}" role="img" aria-label="めいろ">
     <path class="${cls}" style="stroke-width:${model.strokeWidth}" d="${wallPaths.join(' ')}"></path>
     <circle class="maze-start" cx="${s[0]}" cy="${s[1]}" r="8"></circle>
     <rect class="maze-goal" x="${g[0] - 8}" y="${g[1] - 8}" width="16" height="16" rx="2"></rect>
+    <text class="maze-label maze-label--start" x="${sl[0]}" y="${sl[1]}" text-anchor="middle" dominant-baseline="middle">スタート</text>
+    <text class="maze-label maze-label--goal" x="${gl[0]}" y="${gl[1]}" text-anchor="middle" dominant-baseline="middle">ゴール</text>
     ${letters}
   </svg>`;
 }
@@ -900,19 +924,19 @@ function buildMazeSvgWithLetters(model, lettersOnPath) {
 function buildMazeByLevel(count, _cw, _allowKatakana, _kanaMode, levelArg, forcedType) {
   const level = levelArg || 'beginner';
   const typePoolByLevel = {
-    beginner: ['normal', 'curve', 'single', 'distort'],
-    intermediate: ['normal', 'curve', 'distort', 'branchy'],
-    advanced: ['normal', 'curve', 'distort', 'branchy', 'trap'],
+    beginner: ['normal', 'soft'],
+    intermediate: ['normal', 'soft'],
+    advanced: ['normal', 'soft'],
   };
   const cards = [];
   const answers = [];
   for (let i = 0; i < count; i++) {
     const mazeType = forcedType || pickOne(typePoolByLevel[level] || typePoolByLevel.beginner);
-    const model = buildMazeModel(level, mazeType, 8);
+    const model = buildMazeModel(level, mazeType, level === 'beginner' ? 10 : 14);
     if (!model) continue;
     const svg = buildMazeSvgWithLetters(model);
-    cards.push(questionCard(i + 1, `<div class="maze-card"><div class="maze-head"><span>スタート</span><span>ゴール</span></div>${svg}</div>`));
-    answers.push(`めいろ${i + 1}：ゴール可（経路長 ${model.path.length}）`);
+    cards.push(questionCard(i + 1, `<div class="maze-card">${svg}</div>`));
+    answers.push(`めいろ${i + 1}：経路長 ${model.path.length}`);
   }
   return { cardHtmls: cards, answers };
 }
@@ -955,17 +979,15 @@ function buildHiraganaMazeByLevel(count, _cw, _allowKatakana, _kanaMode, levelAr
     let done = false;
     for (let attempt = 0; attempt < 40 && !done; attempt++) {
       const picked = pickHiraganaMazeWord(categoryArg);
-      const model = buildMazeModel(level, pickOne(['normal', 'curve', 'distort', 'branchy']), [...picked.word].length + 6);
+      const model = buildMazeModel(level, pickOne(['normal', 'soft']), [...picked.word].length + 8);
       if (!model || !model.path) continue;
       const letters = buildPathLetterPlacements(model.path, picked.word);
       if (!letters) continue;
       const svg = buildMazeSvgWithLetters(model, letters);
-      cards.push(
-        questionCard(
-          i + 1,
-          `<div class="maze-card"><div class="maze-head"><span>スタート</span><span>ゴール</span></div>${svg}<div class="maze-word-question">ルートの もじを よんで、ならべると なに？</div></div>`
-        )
-      );
+      const boxes = [...picked.word]
+        .map((ch) => `<div class="maze-answer-box">${escapeHtmlPrint(ch)}</div>`)
+        .join('');
+      cards.push(questionCard(i + 1, `<div class="maze-card">${svg}<div class="maze-word-question">ルートの もじを よんで、ならべると なに？</div><div class="maze-answer-row">${boxes}</div></div>`));
       answers.push(`${picked.word}（${picked.category}）`);
       done = true;
     }

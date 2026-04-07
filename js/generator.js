@@ -665,159 +665,385 @@ function pickOne(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
-function generateMazeModel(level, profileName) {
-  const defs = {
-    beginner: { w: 12, h: 8, carveExtra: 0.01 },
-    intermediate: { w: 14, h: 10, carveExtra: 0.04 },
-    advanced: { w: 16, h: 12, carveExtra: 0.08 },
-  };
-  const d = defs[level] || defs.beginner;
-  if (profileName === 'single') d.carveExtra = 0.005;
-  if (profileName === 'branchy') d.carveExtra += 0.03;
-  if (profileName === 'trap') d.carveExtra += 0.05;
-
-  const { w, h } = d;
-  const cells = Array.from({ length: h }, () =>
-    Array.from({ length: w }, () => ({ r: false, b: false }))
+function createMazeCells(w, h) {
+  return Array.from({ length: h }, () =>
+    Array.from({ length: w }, () => ({ top: true, right: true, bottom: true, left: true }))
   );
-  const visited = Array.from({ length: h }, () => Array(w).fill(false));
-  const stack = [[0, 0]];
-  visited[0][0] = true;
-  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+}
 
+function removeWall(cells, x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  if (dx === 1) { cells[y1][x1].right = false; cells[y2][x2].left = false; }
+  if (dx === -1) { cells[y1][x1].left = false; cells[y2][x2].right = false; }
+  if (dy === 1) { cells[y1][x1].bottom = false; cells[y2][x2].top = false; }
+  if (dy === -1) { cells[y1][x1].top = false; cells[y2][x2].bottom = false; }
+}
+
+function mazeNeighbors(x, y, w, h) {
+  return [
+    [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1],
+  ].filter(([nx, ny]) => nx >= 0 && ny >= 0 && nx < w && ny < h);
+}
+
+function isConnected(cells, x1, y1, x2, y2) {
+  if (x2 === x1 + 1) return !cells[y1][x1].right;
+  if (x2 === x1 - 1) return !cells[y1][x1].left;
+  if (y2 === y1 + 1) return !cells[y1][x1].bottom;
+  if (y2 === y1 - 1) return !cells[y1][x1].top;
+  return false;
+}
+
+function buildPerfectMaze(w, h) {
+  const cells = createMazeCells(w, h);
+  const visited = Array.from({ length: h }, () => Array(w).fill(false));
+  const stack = [[randInt(0, w - 1), randInt(0, h - 1)]];
+  visited[stack[0][1]][stack[0][0]] = true;
   while (stack.length) {
     const [x, y] = stack[stack.length - 1];
-    const nexts = shuffle(dirs)
-      .map(([dx, dy]) => [x + dx, y + dy, dx, dy])
-      .filter(([nx, ny]) => nx >= 0 && ny >= 0 && nx < w && ny < h && !visited[ny][nx]);
+    const nexts = shuffle(mazeNeighbors(x, y, w, h).filter(([nx, ny]) => !visited[ny][nx]));
     if (!nexts.length) {
       stack.pop();
       continue;
     }
-    const [nx, ny, dx, dy] = nexts[0];
-    if (dx === 1) cells[y][x].r = true;
-    if (dx === -1) cells[y][nx].r = true;
-    if (dy === 1) cells[y][x].b = true;
-    if (dy === -1) cells[ny][x].b = true;
+    const [nx, ny] = nexts[0];
+    removeWall(cells, x, y, nx, ny);
     visited[ny][nx] = true;
     stack.push([nx, ny]);
   }
-
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (Math.random() >= d.carveExtra) continue;
-      const [dx, dy] = pickOne(dirs);
-      const nx = x + dx;
-      const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-      if (dx === 1) cells[y][x].r = true;
-      if (dx === -1) cells[y][nx].r = true;
-      if (dy === 1) cells[y][x].b = true;
-      if (dy === -1) cells[ny][x].b = true;
-    }
-  }
-  return { w, h, cells };
+  return cells;
 }
 
-function buildMazeSvg(level, profileName) {
-  const model = generateMazeModel(level, profileName);
-  const cell = 28;
+function solveMazePath(cells, start, goal) {
+  const h = cells.length;
+  const w = cells[0].length;
+  const q = [start];
+  const seen = Array.from({ length: h }, () => Array(w).fill(false));
+  const prev = Array.from({ length: h }, () => Array(w).fill(null));
+  seen[start[1]][start[0]] = true;
+  for (let i = 0; i < q.length; i++) {
+    const [x, y] = q[i];
+    if (x === goal[0] && y === goal[1]) break;
+    mazeNeighbors(x, y, w, h).forEach(([nx, ny]) => {
+      if (seen[ny][nx]) return;
+      if (!isConnected(cells, x, y, nx, ny)) return;
+      seen[ny][nx] = true;
+      prev[ny][nx] = [x, y];
+      q.push([nx, ny]);
+    });
+  }
+  if (!seen[goal[1]][goal[0]]) return null;
+  const path = [];
+  let cur = goal;
+  while (cur) {
+    path.push(cur);
+    const p = prev[cur[1]][cur[0]];
+    cur = p;
+  }
+  return path.reverse();
+}
+
+function openExtraWalls(cells, amount) {
+  const h = cells.length;
+  const w = cells[0].length;
+  for (let i = 0; i < amount; i++) {
+    const x = randInt(0, w - 1);
+    const y = randInt(0, h - 1);
+    const n = pickOne(mazeNeighbors(x, y, w, h));
+    removeWall(cells, x, y, n[0], n[1]);
+  }
+}
+
+function randomStartGoal(w, h) {
+  const starts = [];
+  for (let x = 0; x < w; x++) {
+    starts.push([x, 0], [x, h - 1]);
+  }
+  for (let y = 1; y < h - 1; y++) {
+    starts.push([0, y], [w - 1, y]);
+  }
+  const start = pickOne(starts);
+  let goal = pickOne(starts);
+  let guard = 0;
+  while ((Math.abs(goal[0] - start[0]) + Math.abs(goal[1] - start[1])) < Math.floor((w + h) * 0.75) && guard < 80) {
+    goal = pickOne(starts);
+    guard += 1;
+  }
+  return { start, goal };
+}
+
+function buildMazeModel(level, mazeType, requireMinPathLen) {
+  const confByLevel = {
+    beginner: { w: 12, h: 9, cell: 30, width: [2.4, 3.4] },
+    intermediate: { w: 14, h: 10, cell: 28, width: [2.1, 3.0] },
+    advanced: { w: 16, h: 12, cell: 26, width: [1.9, 2.8] },
+  };
+  const typeExtra = {
+    normal: 0,
+    curve: 2,
+    distort: 3,
+    single: 0,
+    branchy: 18,
+    trap: 28,
+  };
+  const base = { ...(confByLevel[level] || confByLevel.beginner) };
+  if (mazeType === 'single') {
+    base.w = Math.max(10, base.w - 2);
+    base.h = Math.max(8, base.h - 2);
+  }
+  if (mazeType === 'branchy' || mazeType === 'trap') {
+    base.w += 1;
+    base.h += 1;
+  }
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const cells = buildPerfectMaze(base.w, base.h);
+    openExtraWalls(cells, typeExtra[mazeType] || 0);
+    const { start, goal } = randomStartGoal(base.w, base.h);
+    const path = solveMazePath(cells, start, goal);
+    if (!path) continue;
+    if (requireMinPathLen && path.length < requireMinPathLen) continue;
+    return {
+      w: base.w,
+      h: base.h,
+      cell: base.cell,
+      strokeWidth: randInt(Math.round(base.width[0] * 10), Math.round(base.width[1] * 10)) / 10,
+      type: mazeType,
+      cells,
+      start,
+      goal,
+      path,
+    };
+  }
+  return null;
+}
+
+function getNodeOffsetMap(w, h, cell, intensity) {
+  const map = [];
+  for (let y = 0; y <= h; y++) {
+    const row = [];
+    for (let x = 0; x <= w; x++) {
+      const edge = x === 0 || y === 0 || x === w || y === h;
+      const amp = edge ? 0 : cell * intensity;
+      row.push([amp ? (Math.random() * amp * 2 - amp) : 0, amp ? (Math.random() * amp * 2 - amp) : 0]);
+    }
+    map.push(row);
+  }
+  return map;
+}
+
+function pointWithOffset(x, y, pad, cell, offsetMap) {
+  const ox = offsetMap ? offsetMap[y][x][0] : 0;
+  const oy = offsetMap ? offsetMap[y][x][1] : 0;
+  return [pad + x * cell + ox, pad + y * cell + oy];
+}
+
+function wallSegmentPath(x1, y1, x2, y2, smooth) {
+  if (!smooth) return `M${x1} ${y1} L${x2} ${y2}`;
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+  return `M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}`;
+}
+
+function buildMazeSvgWithLetters(model, lettersOnPath) {
   const pad = 8;
-  const width = model.w * cell + pad * 2;
-  const height = model.h * cell + pad * 2;
-  const strokeWidth = randInt(2, 4);
-  let d = `M${pad} ${pad} H${width - pad} V${height - pad} H${pad} Z `;
+  const width = model.w * model.cell + pad * 2;
+  const height = model.h * model.cell + pad * 2;
+  const smooth = model.type === 'curve' || model.type === 'single';
+  const distort = model.type === 'distort';
+  const offsetMap = distort ? getNodeOffsetMap(model.w, model.h, model.cell, 0.1) : null;
+  const wallPaths = [];
   for (let y = 0; y < model.h; y++) {
     for (let x = 0; x < model.w; x++) {
-      const px = pad + x * cell;
-      const py = pad + y * cell;
-      if (model.cells[y][x].r) d += `M${px + cell} ${py} V${py + cell} `;
-      if (model.cells[y][x].b) d += `M${px} ${py + cell} H${px + cell} `;
+      const c = model.cells[y][x];
+      if (c.top) {
+        const a = pointWithOffset(x, y, pad, model.cell, offsetMap);
+        const b = pointWithOffset(x + 1, y, pad, model.cell, offsetMap);
+        wallPaths.push(wallSegmentPath(a[0], a[1], b[0], b[1], smooth));
+      }
+      if (c.left) {
+        const a = pointWithOffset(x, y, pad, model.cell, offsetMap);
+        const b = pointWithOffset(x, y + 1, pad, model.cell, offsetMap);
+        wallPaths.push(wallSegmentPath(a[0], a[1], b[0], b[1], smooth));
+      }
+      if (x === model.w - 1 && c.right) {
+        const a = pointWithOffset(x + 1, y, pad, model.cell, offsetMap);
+        const b = pointWithOffset(x + 1, y + 1, pad, model.cell, offsetMap);
+        wallPaths.push(wallSegmentPath(a[0], a[1], b[0], b[1], smooth));
+      }
+      if (y === model.h - 1 && c.bottom) {
+        const a = pointWithOffset(x, y + 1, pad, model.cell, offsetMap);
+        const b = pointWithOffset(x + 1, y + 1, pad, model.cell, offsetMap);
+        wallPaths.push(wallSegmentPath(a[0], a[1], b[0], b[1], smooth));
+      }
     }
   }
-  const sx = pad + cell * 0.5;
-  const sy = pad + cell * 0.5;
-  const gx = pad + (model.w - 0.5) * cell;
-  const gy = pad + (model.h - 0.5) * cell;
-  const visual = profileName === 'curve' ? 'maze-walls maze-walls--curve' : 'maze-walls';
-  return `<svg class="maze-svg maze-type-${profileName}" viewBox="0 0 ${width} ${height}">
-    <path class="${visual}" style="stroke-width:${strokeWidth}" d="${d}"></path>
-    <circle class="maze-start" cx="${sx}" cy="${sy}" r="8"></circle>
-    <rect class="maze-goal" x="${gx - 8}" y="${gy - 8}" width="16" height="16" rx="2"></rect>
+  const center = (cx, cy) => {
+    const a = pointWithOffset(cx, cy, pad, model.cell, offsetMap);
+    const b = pointWithOffset(cx + 1, cy + 1, pad, model.cell, offsetMap);
+    return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  };
+  const s = center(model.start[0], model.start[1]);
+  const g = center(model.goal[0], model.goal[1]);
+  const letters = (lettersOnPath || []).map((m) => {
+    const p = center(m.x, m.y);
+    return `<text class="maze-char-on-path" x="${p[0]}" y="${p[1]}" text-anchor="middle" dominant-baseline="middle">${escapeHtmlPrint(m.char)}</text>`;
+  }).join('');
+  const cls = model.type === 'curve' ? 'maze-walls maze-walls--curve' : 'maze-walls';
+  return `<svg class="maze-svg maze-type-${model.type}" viewBox="0 0 ${width} ${height}" role="img" aria-label="めいろ">
+    <path class="${cls}" style="stroke-width:${model.strokeWidth}" d="${wallPaths.join(' ')}"></path>
+    <circle class="maze-start" cx="${s[0]}" cy="${s[1]}" r="8"></circle>
+    <rect class="maze-goal" x="${g[0] - 8}" y="${g[1] - 8}" width="16" height="16" rx="2"></rect>
+    ${letters}
   </svg>`;
 }
 
-function buildMazeByLevel(count, _cw, _allowKatakana, _kanaMode, levelArg, fixedType) {
+function buildMazeByLevel(count, _cw, _allowKatakana, _kanaMode, levelArg, forcedType) {
   const level = levelArg || 'beginner';
-  const types = ['normal', 'curve', 'distort', 'single', 'branchy', 'trap'];
+  const typePoolByLevel = {
+    beginner: ['normal', 'curve', 'single', 'distort'],
+    intermediate: ['normal', 'curve', 'distort', 'branchy'],
+    advanced: ['normal', 'curve', 'distort', 'branchy', 'trap'],
+  };
   const cards = [];
+  const answers = [];
   for (let i = 0; i < count; i++) {
-    const t = fixedType || pickOne(types);
-    cards.push(questionCard(i + 1, `<div class="maze-card"><div class="maze-head"><span>スタート</span><span>ゴール</span></div>${buildMazeSvg(level, t)}</div>`));
+    const mazeType = forcedType || pickOne(typePoolByLevel[level] || typePoolByLevel.beginner);
+    const model = buildMazeModel(level, mazeType, 8);
+    if (!model) continue;
+    const svg = buildMazeSvgWithLetters(model);
+    cards.push(questionCard(i + 1, `<div class="maze-card"><div class="maze-head"><span>スタート</span><span>ゴール</span></div>${svg}</div>`));
+    answers.push(`めいろ${i + 1}：ゴール可（経路長 ${model.path.length}）`);
   }
-  return { cardHtmls: cards, answers: Array.from({ length: count }, (_, i) => `めいろ ${i + 1}`) };
+  return { cardHtmls: cards, answers };
 }
 
 const HIRAGANA_MAZE_WORDS = {
-  food: ['らーめん', 'おにぎり', 'けーき', 'すし', 'ぎょうざ'],
-  animal: ['うさぎ', 'らいおん', 'ぱんだ', 'きりん', 'ぺんぎん'],
-  vehicle: ['でんしゃ', 'ばす', 'ひこうき', 'ふね', 'じてんしゃ'],
-  fruit: ['りんご', 'みかん', 'いちご', 'もも', 'ばなな'],
+  food: ['らーめん', 'おにぎり', 'けーき', 'ぎょうざ', 'おすし', 'みかんぜりー', 'たまごやき', 'はんばーぐ'],
+  animal: ['うさぎ', 'らいおん', 'ぱんだ', 'きりん', 'ぺんぎん', 'こあら', 'しまうま', 'おおかみ'],
+  vehicle: ['でんしゃ', 'ひこうき', 'じてんしゃ', 'しょうぼうしゃ', 'きゅうきゅうしゃ', 'しんかんせん', 'たくしー', 'ふね'],
+  fruit: ['りんご', 'みかん', 'いちご', 'もも', 'ばなな', 'ぶどう', 'ぱいなっぷる', 'めろん'],
 };
 
-function buildHiraganaMazeByLevel(count, _cw, _allowKatakana, _kanaMode, _levelArg, categoryArg) {
-  const base = buildMazeByLevel(count, '', false, 'mix', _levelArg || 'beginner');
-  const cards = base.cardHtmls.map((c) => {
-    const available = categoryArg && categoryArg !== 'all' && HIRAGANA_MAZE_WORDS[categoryArg]
-      ? [categoryArg]
-      : Object.keys(HIRAGANA_MAZE_WORDS);
-    const key = pickOne(available);
-    const word = pickOne(HIRAGANA_MAZE_WORDS[key]);
-    const chars = [...word].map((ch) => `<span class="maze-char">${escapeHtmlPrint(ch)}</span>`).join('');
-    return c.replace('</div></div>', `<div class="maze-word-hint">ルートの もじ：${chars}</div><div class="maze-word-question">ならべると なにの ことば？</div></div></div>`);
-  });
-  return { cardHtmls: cards, answers: Array.from({ length: count }, (_v, i) => `ひらがな迷路 ${i + 1}`) };
+function pickHiraganaMazeWord(categoryArg) {
+  const keys = categoryArg && categoryArg !== 'all' && HIRAGANA_MAZE_WORDS[categoryArg]
+    ? [categoryArg]
+    : Object.keys(HIRAGANA_MAZE_WORDS);
+  const cat = pickOne(keys);
+  return { category: cat, word: pickOne(HIRAGANA_MAZE_WORDS[cat]) };
 }
 
-const SENTENCE_WHERE = ['こうえんで', 'がっこうで', 'いえで', 'としょかんで'];
-const SENTENCE_WHO = ['おとこのこが', 'おんなのこが', 'せんせいが', 'いぬが'];
-const SENTENCE_DO = ['ぼーるであそんでいます', 'ほんをよんでいます', 'ねています', 'えをかいています'];
+function buildPathLetterPlacements(path, word) {
+  if (!path || path.length < word.length + 2) return null;
+  const chars = [...word];
+  const placements = [];
+  const first = 1;
+  const last = path.length - 2;
+  const span = last - first;
+  for (let i = 0; i < chars.length; i++) {
+    const idx = first + Math.round((span * i) / Math.max(1, chars.length - 1));
+    const p = path[idx];
+    placements.push({ x: p[0], y: p[1], char: chars[i] });
+  }
+  return placements;
+}
 
-function makeSentenceTriplet() {
+function buildHiraganaMazeByLevel(count, _cw, _allowKatakana, _kanaMode, levelArg, categoryArg) {
+  const level = levelArg || 'beginner';
+  const cards = [];
+  const answers = [];
+  for (let i = 0; i < count; i++) {
+    let done = false;
+    for (let attempt = 0; attempt < 40 && !done; attempt++) {
+      const picked = pickHiraganaMazeWord(categoryArg);
+      const model = buildMazeModel(level, pickOne(['normal', 'curve', 'distort', 'branchy']), [...picked.word].length + 6);
+      if (!model || !model.path) continue;
+      const letters = buildPathLetterPlacements(model.path, picked.word);
+      if (!letters) continue;
+      const svg = buildMazeSvgWithLetters(model, letters);
+      cards.push(
+        questionCard(
+          i + 1,
+          `<div class="maze-card"><div class="maze-head"><span>スタート</span><span>ゴール</span></div>${svg}<div class="maze-word-question">ルートの もじを よんで、ならべると なに？</div></div>`
+        )
+      );
+      answers.push(`${picked.word}（${picked.category}）`);
+      done = true;
+    }
+  }
+  return { cardHtmls: cards, answers };
+}
+
+const SENTENCE_WHERE = ['こうえん', 'がっこう', 'いえ', 'どうぶつえん', 'うみ', 'みち', 'きょうしつ', 'こうてい'];
+const SENTENCE_WHO = [
+  { word: 'おとこのこ', type: 'human' },
+  { word: 'おんなのこ', type: 'human' },
+  { word: 'せんせい', type: 'human' },
+  { word: 'いぬ', type: 'animal' },
+  { word: 'ねこ', type: 'animal' },
+  { word: 'とり', type: 'animal' },
+  { word: 'おかあさん', type: 'human' },
+  { word: 'おとうさん', type: 'human' },
+];
+const SENTENCE_ACTIONS = [
+  { text: 'あそんでいます', type: 'any' },
+  { text: 'あるいています', type: 'any' },
+  { text: 'たべています', type: 'any' },
+  { text: 'ねています', type: 'any' },
+  { text: 'はしっています', type: 'any' },
+  { text: 'よんでいます', type: 'human' },
+  { text: 'みています', type: 'any' },
+  { text: 'べんきょうしています', type: 'human' },
+];
+
+function pickSentenceActionFor(subjectType) {
+  const pool = SENTENCE_ACTIONS.filter((a) => a.type === 'any' || a.type === subjectType);
+  return pickOne(pool);
+}
+
+function makeNaturalSentenceSet() {
   const where = pickOne(SENTENCE_WHERE);
   const who = pickOne(SENTENCE_WHO);
-  const action = pickOne(SENTENCE_DO);
-  return { where, who, action, text: `${where} ${who} ${action}` };
+  const action = pickSentenceActionFor(who.type);
+  const text = `${where}で ${who.word}が ${action.text}`;
+  return { where: `${where}で`, who: `${who.word}が`, action: action.text, text };
+}
+
+function build3Choices(correct, pool) {
+  const wrong = shuffle(pool.filter((v) => v !== correct)).slice(0, 2);
+  return shuffle([correct, ...wrong]);
 }
 
 function buildSentenceBeginner(count) {
-  const items = Array.from({ length: count }, () => makeSentenceTriplet());
-  const cards = items.map((s, i) => {
-    let choices = shuffle(SENTENCE_WHERE).slice(0, 3);
-    if (!choices.includes(s.where)) choices[0] = s.where;
-    choices = shuffle(choices);
-    const choicesHtml = choices.map((c) => `<span class="choice-item">${c}</span>`).join('');
-    return questionCard(i + 1, `<div class="choice-sentence">${s.text}</div><div class="choices-row"><span class="choice-label">どこで？</span>${choicesHtml}</div>`);
+  const data = Array.from({ length: count }, () => makeNaturalSentenceSet());
+  const cards = data.map((q, i) => {
+    const whereChoices = build3Choices(q.where, SENTENCE_WHERE.map((v) => `${v}で`));
+    const whoChoices = build3Choices(q.who, SENTENCE_WHO.map((v) => `${v.word}が`));
+    const actionChoices = build3Choices(q.action, SENTENCE_ACTIONS.map((v) => v.text));
+    const toRow = (label, arr) => `<div class="choices-row"><span class="choice-label">${label}</span>${arr.map((c) => `<span class="choice-item">${c}</span>`).join('')}</div>`;
+    return questionCard(i + 1, `<div class="choice-sentence">${q.text}</div>${toRow('どこで？', whereChoices)}${toRow('だれが？', whoChoices)}${toRow('なにをしている？', actionChoices)}`);
   });
-  return { cardHtmls: cards, answers: items.map((s) => s.where) };
+  return { cardHtmls: cards, answers: data.map((q) => `${q.where}/${q.who}/${q.action}`) };
 }
 
 function buildSentenceIntermediate(count) {
-  const items = Array.from({ length: count }, () => makeSentenceTriplet());
-  const cards = items.map((s, i) => {
-    const parts = shuffle([s.where, s.who, s.action]);
-    const partsHtml = parts.map((p) => `<span class="choice-item">${p}</span>`).join('');
-    return questionCard(i + 1, `<div class="emoji-question-prompt">ことばを ただしく ならべよう</div><div class="choices-row">${partsHtml}</div>`);
+  const data = Array.from({ length: count }, () => makeNaturalSentenceSet());
+  const cards = data.map((q, i) => {
+    const shuffled = shuffle([q.where, q.who, q.action]);
+    return questionCard(i + 1, `<div class="emoji-question-prompt">「どこで → だれが → なにをしている」の じゅんで ならべよう</div><div class="choices-row">${shuffled.map((s) => `<span class="choice-item">${s}</span>`).join('')}</div>`);
   });
-  return { cardHtmls: cards, answers: items.map((s) => s.text) };
+  return { cardHtmls: cards, answers: data.map((q) => `${q.where} ${q.who} ${q.action}`) };
 }
 
 function buildSentenceAdvanced(count) {
-  const items = Array.from({ length: count }, () => makeSentenceTriplet());
-  const cards = items.map((s, i) => {
-    const missing = Math.random() < 0.5 ? s.where : s.who;
-    const text = s.text.replace(missing, '＿＿');
-    return questionCard(i + 1, `<div class="desc-sentence">${text}</div><div class="answer-line"></div>`);
+  const data = Array.from({ length: count }, () => makeNaturalSentenceSet());
+  const cards = data.map((q, i) => {
+    const which = pickOne(['where', 'who', 'action']);
+    const blanked = {
+      where: which === 'where' ? '＿＿＿で' : q.where,
+      who: which === 'who' ? '＿＿＿が' : q.who,
+      action: which === 'action' ? '＿＿＿＿＿＿' : q.action,
+    };
+    return questionCard(i + 1, `<div class="desc-sentence">${blanked.where} ${blanked.who} ${blanked.action}</div><div class="adv-prompt-sub">（どこで・だれが・なにをしている）を かんがえて うめよう</div><div class="answer-line"></div>`);
   });
-  return { cardHtmls: cards, answers: items.map((s) => s.text) };
+  return { cardHtmls: cards, answers: data.map((q) => `${q.where} ${q.who} ${q.action}`) };
 }

@@ -906,6 +906,14 @@ body.plan-free .content-btn--custom:not(.active) {
 .maze-walls--curve { stroke-linecap: round; stroke-linejoin: round; }
 .maze-start { fill: #34a853; }
 .maze-goal { fill: #ea4335; }
+.maze-char-on-path {
+  font-size: 12px;
+  font-weight: 800;
+  fill: #1e3a8a;
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 2px;
+}
 .maze-word-hint { margin-top: 6px; font-size: 0.85rem; }
 .maze-char {
   display: inline-block;

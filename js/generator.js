@@ -1224,28 +1224,23 @@ function buildSentenceIllustSvg(pathD) {
 
 function buildSentenceAdvanced(count) {
   const scenes = pickUniqueScenes(count);
-  const patterns = [
-    'だれが なにを していますか',
-    'だれが どこで 〜していますか',
-    'どこで なにを していますか',
-  ];
   const cards = scenes.map((s, i) => {
-    const pattern = patterns[i % patterns.length];
-    const target = pattern === patterns[0]
-      ? `${s.who}が ${s.action}`
-      : pattern === patterns[1]
-        ? `${s.who}が ${s.where}で ${s.action}`
-        : `${s.where}で ${s.action}`;
+    const qType = i % 3;
+    const pattern =
+      qType === 0
+        ? 'だれが なにを していますか。'
+        : qType === 1
+          ? `だれが どこで ${s.action}か。`
+          : 'どこで なにを していますか。';
     const inner = `<div class="choice-sentence">${s.sentence}</div>
       <div class="emoji-question-prompt">しつもん：${pattern}</div>
-      <div class="adv-prompt-sub">ぶんで こたえましょう</div>
       <div class="answer-line"></div>`;
     return questionCard(i + 1, inner);
   });
   const answers = scenes.map((s, i) => {
-    const pattern = patterns[i % patterns.length];
-    if (pattern === patterns[0]) return `${s.who}が ${s.action}`;
-    if (pattern === patterns[1]) return `${s.who}が ${s.where}で ${s.action}`;
+    const qType = i % 3;
+    if (qType === 0) return `${s.who}が ${s.action}`;
+    if (qType === 1) return `${s.who}が ${s.where}で ${s.action}`;
     return `${s.where}で ${s.action}`;
   });
   return { cardHtmls: cards, answers };

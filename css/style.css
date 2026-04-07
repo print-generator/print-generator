@@ -1931,13 +1931,51 @@ body.lp-pricing-page {
     margin-bottom: 1.5mm !important;
   }
   .maze-svg {
-    min-height: 110mm !important;
-    max-height: 124mm !important;
+    min-height: 84mm !important;
+    max-height: 92mm !important;
+  }
+  .maze-card {
+    padding: 2.5mm 2.5mm 3mm !important;
+    border-radius: 6px !important;
+    border: 1pt solid #d6e3f8 !important;
+    background: #ffffff !important;
+  }
+  .maze-card--normal .maze-svg {
+    min-height: 86mm !important;
+    max-height: 94mm !important;
+  }
+  .maze-card--hiragana .maze-svg {
+    min-height: 76mm !important;
+    max-height: 84mm !important;
+  }
+  .maze-word-question {
+    margin-top: 2mm !important;
+    font-size: 8.3pt !important;
+    text-align: center !important;
+    line-height: 1.3 !important;
+  }
+  .maze-answer-row {
+    margin-top: 1.5mm !important;
+    gap: 1.4mm !important;
+    justify-content: center !important;
   }
   .maze-answer-box {
     width: 9mm;
     height: 9mm;
     border-width: 1.5pt;
+    border-color: #7f8ea5 !important;
+    border-radius: 1.2mm !important;
+  }
+  .maze-label {
+    font-size: 8.6pt !important;
+    stroke-width: 2.8pt !important;
+  }
+  .maze-start {
+    r: 2.4mm;
+  }
+  .maze-goal {
+    width: 4.8mm !important;
+    height: 4.8mm !important;
   }
 
   .questions-grid .question-card:last-child {

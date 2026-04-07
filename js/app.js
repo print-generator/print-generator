@@ -16,7 +16,6 @@ let selectedContent = 'joshi';
 let selectedLevel   = 'beginner';
 let selectedCustomMode = 'trace';
 let selectedKanaMode = 'mix';
-let selectedMazeCategory = 'all';
 const CUSTOM_WORD_MAX_COUNT = 8;
 const CUSTOM_WORD_MAX_LEN = 15;
 const CUSTOM_WORD_PLACEHOLDERS = [
@@ -135,21 +134,6 @@ function refreshKanaModeControl() {
     select.value = 'mix';
     selectedKanaMode = 'mix';
     if (hint) hint.textContent = '有料版で「カタカナを含める」をONにすると選べます。';
-  }
-}
-
-function refreshMazeCategoryControl() {
-  const row = document.getElementById('mazeCategoryRow');
-  const select = document.getElementById('mazeCategory');
-  const show = selectedContent === 'maze_hiragana';
-  if (row) row.hidden = !show;
-  if (!select) return;
-  select.disabled = !show || !isProUser;
-  if (!show) {
-    select.value = 'all';
-    selectedMazeCategory = 'all';
-  } else {
-    selectedMazeCategory = select.value || 'all';
   }
 }
 
@@ -394,7 +378,6 @@ function applyPlanTierToUI() {
   refreshKatakanaGenerateNote();
   refreshKatakanaToggleRow();
   refreshKanaModeControl();
-  refreshMazeCategoryControl();
   syncModalPanelsForPlan();
   ensureCustomWordInputsReady();
   refreshCustomWordButtons();
@@ -432,7 +415,6 @@ document.querySelectorAll('.content-btn').forEach(btn => {
     selectedContent = btn.dataset.value;
     refreshCustomWordControl();
     refreshKanaModeControl();
-    refreshMazeCategoryControl();
   });
 });
 
@@ -470,13 +452,6 @@ if (kanaModeEl) {
     selectedKanaMode = kanaModeEl.value || 'mix';
   });
 }
-const mazeCategoryEl = document.getElementById('mazeCategory');
-if (mazeCategoryEl) {
-  mazeCategoryEl.addEventListener('change', () => {
-    selectedMazeCategory = mazeCategoryEl.value || 'all';
-  });
-}
-
 document.querySelectorAll('.custom-mode-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.custom-mode-btn').forEach((b) => {
@@ -544,8 +519,6 @@ function generatePrint() {
       return;
     }
     customPayload = { words, mode: selectedCustomMode };
-  } else if (content === 'maze_hiragana') {
-    customPayload = { mazeCategory: selectedMazeCategory || 'all' };
   }
 
   const overlay = document.getElementById('loadingOverlay');

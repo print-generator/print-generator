@@ -337,8 +337,7 @@ function buildQuestionBodyStructured(content, level, count, customPayload, allow
       : buildCustomTrace(count, words);
   }
   if (content === 'maze_hiragana') {
-    const category = String(customPayload?.mazeCategory || 'all');
-    return buildHiraganaMazeByLevel(count, '', false, 'mix', level, category);
+    return buildHiraganaMazeByLevel(count, '', false, 'mix', level, 'all');
   }
   const builders = {
     joshi: {
@@ -966,25 +965,57 @@ function buildMazeByLevel(count, _cw, _allowKatakana, _kanaMode, levelArg, force
     const model = buildMazeModel(level, mazeType, level === 'beginner' ? 10 : 14);
     if (!model) continue;
     const svg = buildMazeSvgWithLetters(model);
-    cards.push(questionCard(i + 1, `<div class="maze-card">${svg}</div>`));
+    cards.push(questionCard(i + 1, `<div class="maze-card maze-card--normal">${svg}</div>`));
     answers.push(`めいろ${i + 1}：経路長 ${model.path.length}`);
   }
   return { cardHtmls: cards, answers };
 }
 
 const HIRAGANA_MAZE_WORDS = {
-  food: ['らーめん', 'おにぎり', 'けーき', 'ぎょうざ', 'おすし', 'みかんぜりー', 'たまごやき', 'はんばーぐ'],
-  animal: ['うさぎ', 'らいおん', 'ぱんだ', 'きりん', 'ぺんぎん', 'こあら', 'しまうま', 'おおかみ'],
-  vehicle: ['でんしゃ', 'ひこうき', 'じてんしゃ', 'しょうぼうしゃ', 'きゅうきゅうしゃ', 'しんかんせん', 'たくしー', 'ふね'],
-  fruit: ['りんご', 'みかん', 'いちご', 'もも', 'ばなな', 'ぶどう', 'ぱいなっぷる', 'めろん'],
+  food: [
+    'かれーらいす', 'はんばーぐ', 'らーめん', 'おすし', 'やきとり', 'たこやき', 'おにぎり', 'ぱん',
+    'ぴざ', 'どーなつ', 'あいすくりーむ', 'かきごおり', 'かまめし', 'おむらいす', 'ぎょうざ', 'やきそば',
+    'てんぷら', 'うどん', 'おでん', 'ちゃーはん', 'からあげ', 'みそしる', 'しちゅー', 'ぐらたん',
+    'ほっとけーき', 'くっきー', 'ぷりん', 'おべんとう', 'たまごやき', 'とんかつ',
+  ],
+  fruit: [
+    'すいか', 'いちご', 'みかん', 'りんご', 'ばなな', 'ぶどう', 'さくらんぼ', 'めろん', 'もも',
+    'なし', 'ぱいなっぷる', 'きうい', 'れもん', 'かき', 'まんごー', 'ぶるーべりー',
+  ],
+  vehicle: [
+    'でんしゃ', 'しんかんせん', 'どくたーいえろー', 'ばす', 'たくしー', 'ぱとかー', 'しょうぼうしゃ',
+    'だんぷかー', 'とらっく', 'ひこうき', 'へりこぷたー', 'ふね', 'じてんしゃ', 'きゅうきゅうしゃ',
+    'みにかー', 'ろーぷうぇい', 'ごんどら', 'よっと',
+  ],
+  animal: [
+    'いぬ', 'ねこ', 'うさぎ', 'ぞう', 'きりん', 'らいおん', 'くま', 'ぱんだ', 'さる', 'とり',
+    'ぺんぎん', 'いるか', 'こあら', 'しまうま', 'かば', 'りす', 'きつね', 'たぬき',
+    'しろくま', 'うま', 'ひつじ', 'やぎ', 'ふくろう', 'わに',
+  ],
 };
+
+let LAST_HIRAGANA_MAZE_CATEGORY = '';
+let LAST_HIRAGANA_MAZE_WORD = '';
 
 function pickHiraganaMazeWord(categoryArg) {
   const keys = categoryArg && categoryArg !== 'all' && HIRAGANA_MAZE_WORDS[categoryArg]
     ? [categoryArg]
     : Object.keys(HIRAGANA_MAZE_WORDS);
-  const cat = pickOne(keys);
-  return { category: cat, word: pickOne(HIRAGANA_MAZE_WORDS[cat]) };
+  let catPool = [...keys];
+  if (catPool.length > 1 && LAST_HIRAGANA_MAZE_CATEGORY) {
+    catPool = catPool.filter((k) => k !== LAST_HIRAGANA_MAZE_CATEGORY);
+    if (!catPool.length) catPool = [...keys];
+  }
+  const cat = pickOne(catPool);
+  let words = [...HIRAGANA_MAZE_WORDS[cat]];
+  if (words.length > 1 && LAST_HIRAGANA_MAZE_WORD) {
+    words = words.filter((w) => w !== LAST_HIRAGANA_MAZE_WORD);
+    if (!words.length) words = [...HIRAGANA_MAZE_WORDS[cat]];
+  }
+  const word = pickOne(words);
+  LAST_HIRAGANA_MAZE_CATEGORY = cat;
+  LAST_HIRAGANA_MAZE_WORD = word;
+  return { category: cat, word };
 }
 
 function buildPathLetterPlacements(path, word) {
@@ -1018,7 +1049,7 @@ function buildHiraganaMazeByLevel(count, _cw, _allowKatakana, _kanaMode, levelAr
       const boxes = [...picked.word]
         .map(() => '<div class="maze-answer-box"></div>')
         .join('');
-      cards.push(questionCard(i + 1, `<div class="maze-card">${svg}<div class="maze-word-question">ルートの もじを よんで、ならべると なに？</div><div class="maze-answer-row">${boxes}</div></div>`));
+      cards.push(questionCard(i + 1, `<div class="maze-card maze-card--hiragana">${svg}<div class="maze-word-question">ルートの もじを よんで、ならべると なに？</div><div class="maze-answer-row">${boxes}</div></div>`));
       answers.push(`${picked.word}（${picked.category}）`);
       done = true;
     }

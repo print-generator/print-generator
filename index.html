@@ -228,6 +228,22 @@
             <span class="option-label">生活単語</span>
             <span class="option-desc">くつ・かばん など</span>
           </button>
+          <button class="option-btn content-btn" data-value="maze" aria-pressed="false">
+            <span class="option-icon">🧩</span>
+            <span class="option-label">めいろ</span>
+            <span class="option-desc">ランダム生成</span>
+          </button>
+          <button type="button" class="option-btn content-btn content-btn--custom" data-value="maze_hiragana" aria-pressed="false" id="contentBtnMazeHiragana" title="有料版のみ">
+            <span class="option-icon">🔤</span>
+            <span class="option-label">ひらがな迷路</span>
+            <span class="option-desc">ことばを完成</span>
+            <span class="option-pro-badge">PRO</span>
+          </button>
+          <button class="option-btn content-btn" data-value="sentence" aria-pressed="false">
+            <span class="option-icon">📚</span>
+            <span class="option-label">文章問題</span>
+            <span class="option-desc">どこで・だれが・なにを</span>
+          </button>
           <button type="button" class="option-btn content-btn content-btn--custom" data-value="custom" aria-pressed="false" id="contentBtnCustom" title="有料版のみ">
             <span class="option-icon">✏️</span>
             <span class="option-label">カスタム問題</span>
@@ -350,6 +366,21 @@
               <i class="fas fa-plus"></i> 単語を追加
             </button>
             <p class="setting-hint" id="customWordHint">1単語15文字まで。入力した単語はすべて問題に反映されます。</p>
+          </div>
+        </div>
+        <div class="settings-row settings-row--maze-category" id="mazeCategoryRow" hidden>
+          <div class="setting-item setting-item--full">
+            <label for="mazeCategory" class="setting-label">
+              <i class="fas fa-tags"></i> ひらがな迷路のカテゴリ
+            </label>
+            <select id="mazeCategory" class="setting-select">
+              <option value="all" selected>ランダム（全カテゴリ）</option>
+              <option value="food">食べ物</option>
+              <option value="animal">動物</option>
+              <option value="vehicle">乗り物</option>
+              <option value="fruit">果物</option>
+            </select>
+            <p class="setting-hint">有料版のみ選択できます。</p>
           </div>
         </div>
 

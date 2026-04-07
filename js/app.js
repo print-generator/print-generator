@@ -16,6 +16,7 @@ let selectedContent = 'joshi';
 let selectedLevel   = 'beginner';
 let selectedCustomMode = 'trace';
 let selectedKanaMode = 'mix';
+let selectedMazeCategory = 'all';
 const CUSTOM_WORD_MAX_COUNT = 8;
 const CUSTOM_WORD_MAX_LEN = 15;
 const CUSTOM_WORD_PLACEHOLDERS = [
@@ -124,6 +125,21 @@ function refreshKanaModeControl() {
     select.value = 'mix';
     selectedKanaMode = 'mix';
     if (hint) hint.textContent = '有料版で「カタカナを含める」をONにすると選べます。';
+  }
+}
+
+function refreshMazeCategoryControl() {
+  const row = document.getElementById('mazeCategoryRow');
+  const select = document.getElementById('mazeCategory');
+  const show = selectedContent === 'maze_hiragana';
+  if (row) row.hidden = !show;
+  if (!select) return;
+  select.disabled = !show || !isProUser;
+  if (!show) {
+    select.value = 'all';
+    selectedMazeCategory = 'all';
+  } else {
+    selectedMazeCategory = select.value || 'all';
   }
 }
 
@@ -368,6 +384,7 @@ function applyPlanTierToUI() {
   refreshKatakanaGenerateNote();
   refreshKatakanaToggleRow();
   refreshKanaModeControl();
+  refreshMazeCategoryControl();
   syncModalPanelsForPlan();
   ensureCustomWordInputsReady();
   refreshCustomWordButtons();
@@ -376,6 +393,11 @@ function applyPlanTierToUI() {
     customBtn.classList.toggle('content-btn--locked', !isProUser);
     customBtn.setAttribute('aria-disabled', !isProUser ? 'true' : 'false');
   }
+  const hiraMazeBtn = document.getElementById('contentBtnMazeHiragana');
+  if (hiraMazeBtn) {
+    hiraMazeBtn.classList.toggle('content-btn--locked', !isProUser);
+    hiraMazeBtn.setAttribute('aria-disabled', !isProUser ? 'true' : 'false');
+  }
 }
 
 /* ════════════════════════════════════════
@@ -383,6 +405,10 @@ function applyPlanTierToUI() {
 ════════════════════════════════════════ */
 document.querySelectorAll('.content-btn').forEach(btn => {
   btn.addEventListener('click', () => {
+    if (!isProUser && btn.dataset.value === 'maze_hiragana') {
+      openPlanModal('ひらがな迷路は有料版で利用できます');
+      return;
+    }
     if (!isProUser && btn.dataset.value === 'custom') {
       openFeatureLockedModal('custom');
       return;
@@ -396,6 +422,7 @@ document.querySelectorAll('.content-btn').forEach(btn => {
     selectedContent = btn.dataset.value;
     refreshCustomWordControl();
     refreshKanaModeControl();
+    refreshMazeCategoryControl();
   });
 });
 
@@ -431,6 +458,12 @@ const kanaModeEl = document.getElementById('kanaMode');
 if (kanaModeEl) {
   kanaModeEl.addEventListener('change', () => {
     selectedKanaMode = kanaModeEl.value || 'mix';
+  });
+}
+const mazeCategoryEl = document.getElementById('mazeCategory');
+if (mazeCategoryEl) {
+  mazeCategoryEl.addEventListener('change', () => {
+    selectedMazeCategory = mazeCategoryEl.value || 'all';
   });
 }
 
@@ -480,6 +513,10 @@ function generatePrint() {
       openFeatureLockedModal('custom');
       return;
     }
+    if (content === 'maze_hiragana') {
+      openPlanModal('ひらがな迷路は有料版で利用できます');
+      return;
+    }
   }
 
   const wantAnswers =
@@ -497,6 +534,8 @@ function generatePrint() {
       return;
     }
     customPayload = { words, mode: selectedCustomMode };
+  } else if (content === 'maze_hiragana') {
+    customPayload = { mazeCategory: selectedMazeCategory || 'all' };
   }
 
   const overlay = document.getElementById('loadingOverlay');
@@ -708,7 +747,15 @@ async function savePdfViaHtml2Canvas() {
         );
       }
 
-      const contentLabels = { joshi: '助詞', hiragana: '50音', seikatsu: '生活単語', custom: 'カスタム問題' };
+      const contentLabels = {
+        joshi: '助詞',
+        hiragana: '50音',
+        seikatsu: '生活単語',
+        custom: 'カスタム問題',
+        maze: 'めいろ',
+        maze_hiragana: 'ひらがな迷路',
+        sentence: '文章問題',
+      };
       pdf.save(
         `プリント_${contentLabels[contentSel]}_${getLevelLabel(levelSel, contentSel)}_${dateStamp()}.pdf`
       );
@@ -844,7 +891,15 @@ async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) 
       );
     }
 
-    const contentLabels = { joshi: '助詞', hiragana: '50音', seikatsu: '生活単語', custom: 'カスタム問題' };
+    const contentLabels = {
+      joshi: '助詞',
+      hiragana: '50音',
+      seikatsu: '生活単語',
+      custom: 'カスタム問題',
+      maze: 'めいろ',
+      maze_hiragana: 'ひらがな迷路',
+      sentence: '文章問題',
+    };
     pdf.save(
       `プリント_${contentLabels[contentSel]}_${getLevelLabel(levelSel, contentSel)}_${dateStamp()}.pdf`
     );
@@ -918,7 +973,7 @@ function runOneClickGenerate() {
     openPlanModal('ワンクリック自動生成は有料版限定機能です。');
     return;
   }
-  const contents = ['joshi', 'hiragana', 'seikatsu'];
+  const contents = ['joshi', 'hiragana', 'seikatsu', 'maze', 'sentence', 'maze_hiragana'];
   const levels = ['beginner', 'intermediate', 'advanced'];
   const counts = getProQuestionCountOptions();
   selectedContent = contents[Math.floor(Math.random() * contents.length)];

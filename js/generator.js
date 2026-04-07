@@ -160,6 +160,8 @@ function wrapAnswerPagesHtml(answers, meta, footer) {
  * 6問を原則1ページに収めるため、軽いモードは 6 問／ページを優先。記述多めの上級は控えめに。
  */
 function getCardsPerPage(content, level) {
+  if (content === 'maze' || content === 'maze_hiragana') return 2;
+  if (content === 'sentence') return level === 'advanced' ? 4 : 5;
   if (content === 'joshi') {
     return level === 'advanced' ? 4 : 6;
   }
@@ -178,6 +180,8 @@ function getCardsPerPage(content, level) {
  * PC 印刷の getCardsPerPage とは別。助詞・生活 初級/中級 4、上級 3。ひらがなは 3〜4。
  */
 function getCardsPerPageForMobilePdf(content, level) {
+  if (content === 'maze' || content === 'maze_hiragana') return 1;
+  if (content === 'sentence') return level === 'advanced' ? 3 : 4;
   if (content === 'joshi' || content === 'seikatsu' || content === 'custom') {
     return level === 'advanced' ? 3 : 4;
   }
@@ -230,6 +234,9 @@ function buildMeta(content, level) {
     hiragana: { label: '50音', emoji: '🔤' },
     seikatsu: { label: '生活単語', emoji: '🏠' },
     custom:   { label: 'カスタム問題', emoji: '✏️' },
+    maze:     { label: 'めいろ', emoji: '🧩' },
+    maze_hiragana: { label: 'ひらがな迷路', emoji: '🔤' },
+    sentence: { label: '文章問題', emoji: '📚' },
   };
   const levelInfo = {
     beginner:     { label: '初級',  desc: 'なぞり書き',  badge: '🌱' },
@@ -289,6 +296,21 @@ function buildInstruction(meta) {
       intermediate: 'じぶんで いれた ことばを なぞって かきましょう。',
       advanced:     'ことばを みて、したの ますに ししゃ しましょう。',
     },
+    maze: {
+      beginner:     'スタートから ゴールまで すすみましょう。',
+      intermediate: 'わかれみちに きをつけて ゴールを めざしましょう。',
+      advanced:     'いきどまりに きをつけて ゴールを めざしましょう。',
+    },
+    maze_hiragana: {
+      beginner:     'もじを よみながら ゴールを めざしましょう。',
+      intermediate: 'ルートの もじを つないで ことばを つくりましょう。',
+      advanced:     'もじの じゅんばんを たしかめながら すすみましょう。',
+    },
+    sentence: {
+      beginner:     'ぶんを よんで えらびましょう。',
+      intermediate: 'ことばの じゅんばんを ならべましょう。',
+      advanced:     'あなうめを かんがえて かきましょう。',
+    },
   };
   const text = instructions[meta.content][meta.level];
   return `<div class="print-instruction">
@@ -314,6 +336,10 @@ function buildQuestionBodyStructured(content, level, count, customPayload, allow
       ? buildCustomCopy(count, words)
       : buildCustomTrace(count, words);
   }
+  if (content === 'maze_hiragana') {
+    const category = String(customPayload?.mazeCategory || 'all');
+    return buildHiraganaMazeByLevel(count, '', false, 'mix', level, category);
+  }
   const builders = {
     joshi: {
       beginner:     buildJoshiBeginner,
@@ -330,8 +356,23 @@ function buildQuestionBodyStructured(content, level, count, customPayload, allow
       intermediate: buildSeikatsuIntermediate,
       advanced:     buildSeikatsuAdvanced,
     },
+    maze: {
+      beginner: buildMazeByLevel,
+      intermediate: buildMazeByLevel,
+      advanced: buildMazeByLevel,
+    },
+    maze_hiragana: {
+      beginner: buildHiraganaMazeByLevel,
+      intermediate: buildHiraganaMazeByLevel,
+      advanced: buildHiraganaMazeByLevel,
+    },
+    sentence: {
+      beginner: buildSentenceBeginner,
+      intermediate: buildSentenceIntermediate,
+      advanced: buildSentenceAdvanced,
+    },
   };
-  return builders[content][level](count, '', !!allowKatakana, kanaMode || 'mix');
+  return builders[content][level](count, '', !!allowKatakana, kanaMode || 'mix', level);
 }
 
 /** @deprecated 直接は使わず buildQuestionBodyStructured を優先 */
@@ -567,11 +608,12 @@ function buildCustomWordSequence(words, count) {
 function buildCustomTrace(count, words) {
   const seq = buildCustomWordSequence(words, count);
   const cards = seq.map((w, i) => {
-    const charsHtml = [...w].map((c) =>
-      `<div class="seikatsu-char-col">
+    const charsHtml = [...w].map((c) => (c === ' '
+      ? '<div class="seikatsu-char-gap" aria-hidden="true"></div>'
+      : `<div class="seikatsu-char-col">
         <span class="seikatsu-trace">${escapeHtmlPrint(c)}</span>
         <div class="hira-write"></div>
-      </div>`
+      </div>`)
     ).join('');
     const inner = `
       <div class="emoji-question-row emoji-question-row--tight">
@@ -589,8 +631,9 @@ function buildCustomTrace(count, words) {
 function buildCustomCopy(count, words) {
   const seq = buildCustomWordSequence(words, count);
   const cards = seq.map((w, i) => {
-    const boxes = [...w].map(() =>
-      '<div class="write-box write-box-tight"></div>'
+    const boxes = [...w].map((c) => (c === ' '
+      ? '<div class="seikatsu-char-gap" aria-hidden="true"></div>'
+      : '<div class="write-box write-box-tight"></div>')
     ).join('');
     const inner = `
       <div class="emoji-question-row">
@@ -612,4 +655,169 @@ function questionCard(num, innerHtml) {
     <div class="question-num">${num}</div>
     ${innerHtml}
   </div>`;
+}
+
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function pickOne(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function generateMazeModel(level, profileName) {
+  const defs = {
+    beginner: { w: 12, h: 8, carveExtra: 0.01 },
+    intermediate: { w: 14, h: 10, carveExtra: 0.04 },
+    advanced: { w: 16, h: 12, carveExtra: 0.08 },
+  };
+  const d = defs[level] || defs.beginner;
+  if (profileName === 'single') d.carveExtra = 0.005;
+  if (profileName === 'branchy') d.carveExtra += 0.03;
+  if (profileName === 'trap') d.carveExtra += 0.05;
+
+  const { w, h } = d;
+  const cells = Array.from({ length: h }, () =>
+    Array.from({ length: w }, () => ({ r: false, b: false }))
+  );
+  const visited = Array.from({ length: h }, () => Array(w).fill(false));
+  const stack = [[0, 0]];
+  visited[0][0] = true;
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+  while (stack.length) {
+    const [x, y] = stack[stack.length - 1];
+    const nexts = shuffle(dirs)
+      .map(([dx, dy]) => [x + dx, y + dy, dx, dy])
+      .filter(([nx, ny]) => nx >= 0 && ny >= 0 && nx < w && ny < h && !visited[ny][nx]);
+    if (!nexts.length) {
+      stack.pop();
+      continue;
+    }
+    const [nx, ny, dx, dy] = nexts[0];
+    if (dx === 1) cells[y][x].r = true;
+    if (dx === -1) cells[y][nx].r = true;
+    if (dy === 1) cells[y][x].b = true;
+    if (dy === -1) cells[ny][x].b = true;
+    visited[ny][nx] = true;
+    stack.push([nx, ny]);
+  }
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (Math.random() >= d.carveExtra) continue;
+      const [dx, dy] = pickOne(dirs);
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      if (dx === 1) cells[y][x].r = true;
+      if (dx === -1) cells[y][nx].r = true;
+      if (dy === 1) cells[y][x].b = true;
+      if (dy === -1) cells[ny][x].b = true;
+    }
+  }
+  return { w, h, cells };
+}
+
+function buildMazeSvg(level, profileName) {
+  const model = generateMazeModel(level, profileName);
+  const cell = 28;
+  const pad = 8;
+  const width = model.w * cell + pad * 2;
+  const height = model.h * cell + pad * 2;
+  const strokeWidth = randInt(2, 4);
+  let d = `M${pad} ${pad} H${width - pad} V${height - pad} H${pad} Z `;
+  for (let y = 0; y < model.h; y++) {
+    for (let x = 0; x < model.w; x++) {
+      const px = pad + x * cell;
+      const py = pad + y * cell;
+      if (model.cells[y][x].r) d += `M${px + cell} ${py} V${py + cell} `;
+      if (model.cells[y][x].b) d += `M${px} ${py + cell} H${px + cell} `;
+    }
+  }
+  const sx = pad + cell * 0.5;
+  const sy = pad + cell * 0.5;
+  const gx = pad + (model.w - 0.5) * cell;
+  const gy = pad + (model.h - 0.5) * cell;
+  const visual = profileName === 'curve' ? 'maze-walls maze-walls--curve' : 'maze-walls';
+  return `<svg class="maze-svg maze-type-${profileName}" viewBox="0 0 ${width} ${height}">
+    <path class="${visual}" style="stroke-width:${strokeWidth}" d="${d}"></path>
+    <circle class="maze-start" cx="${sx}" cy="${sy}" r="8"></circle>
+    <rect class="maze-goal" x="${gx - 8}" y="${gy - 8}" width="16" height="16" rx="2"></rect>
+  </svg>`;
+}
+
+function buildMazeByLevel(count, _cw, _allowKatakana, _kanaMode, levelArg, fixedType) {
+  const level = levelArg || 'beginner';
+  const types = ['normal', 'curve', 'distort', 'single', 'branchy', 'trap'];
+  const cards = [];
+  for (let i = 0; i < count; i++) {
+    const t = fixedType || pickOne(types);
+    cards.push(questionCard(i + 1, `<div class="maze-card"><div class="maze-head"><span>スタート</span><span>ゴール</span></div>${buildMazeSvg(level, t)}</div>`));
+  }
+  return { cardHtmls: cards, answers: Array.from({ length: count }, (_, i) => `めいろ ${i + 1}`) };
+}
+
+const HIRAGANA_MAZE_WORDS = {
+  food: ['らーめん', 'おにぎり', 'けーき', 'すし', 'ぎょうざ'],
+  animal: ['うさぎ', 'らいおん', 'ぱんだ', 'きりん', 'ぺんぎん'],
+  vehicle: ['でんしゃ', 'ばす', 'ひこうき', 'ふね', 'じてんしゃ'],
+  fruit: ['りんご', 'みかん', 'いちご', 'もも', 'ばなな'],
+};
+
+function buildHiraganaMazeByLevel(count, _cw, _allowKatakana, _kanaMode, _levelArg, categoryArg) {
+  const base = buildMazeByLevel(count, '', false, 'mix', _levelArg || 'beginner');
+  const cards = base.cardHtmls.map((c) => {
+    const available = categoryArg && categoryArg !== 'all' && HIRAGANA_MAZE_WORDS[categoryArg]
+      ? [categoryArg]
+      : Object.keys(HIRAGANA_MAZE_WORDS);
+    const key = pickOne(available);
+    const word = pickOne(HIRAGANA_MAZE_WORDS[key]);
+    const chars = [...word].map((ch) => `<span class="maze-char">${escapeHtmlPrint(ch)}</span>`).join('');
+    return c.replace('</div></div>', `<div class="maze-word-hint">ルートの もじ：${chars}</div><div class="maze-word-question">ならべると なにの ことば？</div></div></div>`);
+  });
+  return { cardHtmls: cards, answers: Array.from({ length: count }, (_v, i) => `ひらがな迷路 ${i + 1}`) };
+}
+
+const SENTENCE_WHERE = ['こうえんで', 'がっこうで', 'いえで', 'としょかんで'];
+const SENTENCE_WHO = ['おとこのこが', 'おんなのこが', 'せんせいが', 'いぬが'];
+const SENTENCE_DO = ['ぼーるであそんでいます', 'ほんをよんでいます', 'ねています', 'えをかいています'];
+
+function makeSentenceTriplet() {
+  const where = pickOne(SENTENCE_WHERE);
+  const who = pickOne(SENTENCE_WHO);
+  const action = pickOne(SENTENCE_DO);
+  return { where, who, action, text: `${where} ${who} ${action}` };
+}
+
+function buildSentenceBeginner(count) {
+  const items = Array.from({ length: count }, () => makeSentenceTriplet());
+  const cards = items.map((s, i) => {
+    let choices = shuffle(SENTENCE_WHERE).slice(0, 3);
+    if (!choices.includes(s.where)) choices[0] = s.where;
+    choices = shuffle(choices);
+    const choicesHtml = choices.map((c) => `<span class="choice-item">${c}</span>`).join('');
+    return questionCard(i + 1, `<div class="choice-sentence">${s.text}</div><div class="choices-row"><span class="choice-label">どこで？</span>${choicesHtml}</div>`);
+  });
+  return { cardHtmls: cards, answers: items.map((s) => s.where) };
+}
+
+function buildSentenceIntermediate(count) {
+  const items = Array.from({ length: count }, () => makeSentenceTriplet());
+  const cards = items.map((s, i) => {
+    const parts = shuffle([s.where, s.who, s.action]);
+    const partsHtml = parts.map((p) => `<span class="choice-item">${p}</span>`).join('');
+    return questionCard(i + 1, `<div class="emoji-question-prompt">ことばを ただしく ならべよう</div><div class="choices-row">${partsHtml}</div>`);
+  });
+  return { cardHtmls: cards, answers: items.map((s) => s.text) };
+}
+
+function buildSentenceAdvanced(count) {
+  const items = Array.from({ length: count }, () => makeSentenceTriplet());
+  const cards = items.map((s, i) => {
+    const missing = Math.random() < 0.5 ? s.where : s.who;
+    const text = s.text.replace(missing, '＿＿');
+    return questionCard(i + 1, `<div class="desc-sentence">${text}</div><div class="answer-line"></div>`);
+  });
+  return { cardHtmls: cards, answers: items.map((s) => s.text) };
 }

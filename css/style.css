@@ -446,7 +446,7 @@ body {
 }
 @media (min-width: 720px) {
   .option-grid--four {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 .option-grid--custom-mode {
@@ -524,6 +524,10 @@ body.plan-free .content-btn--custom:not(.active) {
   padding-top: 0;
 }
 .settings-row--kana-mode {
+  grid-template-columns: 1fr;
+  padding-top: 0;
+}
+.settings-row--maze-category {
   grid-template-columns: 1fr;
   padding-top: 0;
 }
@@ -869,12 +873,49 @@ body.plan-free .content-btn--custom:not(.active) {
   margin: 0 1px;
   vertical-align: top;
 }
+.seikatsu-char-gap {
+  display: inline-block;
+  width: 48px;
+  height: 48px;
+  margin: 0 2px;
+  vertical-align: top;
+}
 .seikatsu-trace {
   font-size: 1.6rem;
   color: #cce0ff;
   font-weight: 900;
   line-height: 1;
 }
+
+.maze-card { width: 100%; }
+.maze-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  color: var(--text-sub);
+  margin-bottom: 4px;
+}
+.maze-svg {
+  width: 100%;
+  min-height: 105mm;
+  max-height: 128mm;
+  display: block;
+  background: #fff;
+}
+.maze-walls { fill: none; stroke: #1f2937; stroke-linecap: square; stroke-linejoin: miter; }
+.maze-walls--curve { stroke-linecap: round; stroke-linejoin: round; }
+.maze-start { fill: #34a853; }
+.maze-goal { fill: #ea4335; }
+.maze-word-hint { margin-top: 6px; font-size: 0.85rem; }
+.maze-char {
+  display: inline-block;
+  min-width: 1.2em;
+  text-align: center;
+  font-weight: 700;
+  border-bottom: 1px dashed #94a3b8;
+  margin-right: 4px;
+}
+.maze-word-question { margin-top: 2px; font-size: 0.82rem; color: var(--text-sub); }
 
 /* ============================================
    有料プランCTAバナー
@@ -1612,6 +1653,7 @@ body.lp-pricing-page {
   .settings-row--katakana .setting-hint,
   .settings-row--kana-mode .setting-hint,
   .settings-row--answer .setting-hint { margin-top: 2px; }
+  .maze-svg { min-height: 86mm; max-height: 110mm; }
   .generate-btn { padding: 16px 32px; font-size: 1rem; }
   .preview-controls { flex-direction: column; align-items: stretch; }
   .preview-actions { justify-content: center; }
@@ -1824,6 +1866,10 @@ body.lp-pricing-page {
     border: 1.5pt solid #dadce0 !important;
     padding: 2.5pt 5pt !important;
     margin-bottom: 1.5mm !important;
+  }
+  .maze-svg {
+    min-height: 120mm !important;
+    max-height: 130mm !important;
   }
 
   .questions-grid .question-card:last-child {

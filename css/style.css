@@ -875,8 +875,8 @@ body.plan-free .content-btn--custom:not(.active) {
 }
 .seikatsu-char-gap {
   display: inline-block;
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   margin: 0 2px;
   vertical-align: top;
 }
@@ -1959,6 +1959,11 @@ body.lp-pricing-page {
   .hira-write {
     border: 1.5pt solid #dadce0 !important;
     background: #fff !important;
+  }
+  .seikatsu-char-gap {
+    width: 12mm !important;
+    height: 12mm !important;
+    margin: 0 0.8mm !important;
   }
   .write-box::after,
   .hira-write::after {

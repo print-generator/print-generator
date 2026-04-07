@@ -113,13 +113,23 @@ function refreshKanaModeControl() {
   const row = document.getElementById('kanaModeRow');
   const select = document.getElementById('kanaMode');
   const hint = document.getElementById('kanaModeHint');
-  const show = isProUser && selectedContent === 'hiragana' && getAllowKatakana();
+  const isHiragana = selectedContent === 'hiragana';
+  const show = isHiragana;
   if (row) row.hidden = !show;
   if (!select) return;
   if (show) {
-    select.disabled = false;
-    selectedKanaMode = select.value || selectedKanaMode || 'mix';
-    if (hint) hint.textContent = '有料版の50音なぞり書きで、出題タイプを切り替えできます。';
+    if (isProUser && getAllowKatakana()) {
+      select.disabled = false;
+      selectedKanaMode = select.value || selectedKanaMode || 'mix';
+      if (hint) hint.textContent = '有料版の50音なぞり書きで、出題タイプを切り替えできます。';
+    } else {
+      select.disabled = true;
+      select.value = 'mix';
+      selectedKanaMode = 'mix';
+      if (hint) hint.textContent = isProUser
+        ? '「カタカナを含める」をONにすると選べます。'
+        : '有料版で「カタカナを含める」をONにすると選べます。';
+    }
   } else {
     select.disabled = true;
     select.value = 'mix';
@@ -240,7 +250,7 @@ function refreshCustomWordControl() {
   const hint = document.getElementById('customWordHint');
   const row = document.getElementById('customWordRow');
   const isCustom = selectedContent === 'custom';
-  const show = isProUser && selectedContent === 'custom';
+  const show = isCustom;
   if (row) row.hidden = !show;
   const levelCard = document.getElementById('levelStepCard');
   const customModeCard = document.getElementById('customModeStepCard');

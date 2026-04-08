@@ -36,7 +36,7 @@ function getEffectiveLevelForContent(content, levelFromUi) {
 
 function getLevelLabel(level, content) {
   if (content === 'custom') {
-    return level === 'advanced' ? '試写' : 'なぞり書き';
+    return level === 'advanced' ? '視写' : 'なぞり書き';
   }
   const levelLabels = { beginner: '初級', intermediate: '中級', advanced: '上級' };
   return levelLabels[level] || level;
@@ -45,8 +45,88 @@ function getLevelLabel(level, content) {
 /** 無料版のみカウント（累計5回まで） */
 const FREE_GENERATION_LIMIT = 5;
 const LS_FREE_GEN_TOTAL_KEY = 'homePrint_freeGenTotal_v2';
+const LS_FREE_GEN_DATE_KEY = 'homePrint_freeGenDateJst_v2';
+const LS_SENTENCE_TRIAL_DATE_KEY = 'homePrint_sentenceTrialDateJst_v1';
+const LS_SENTENCE_TRIAL_COUNT_KEY = 'homePrint_sentenceTrialCount_v1';
+
+function getJstDateKey() {
+  try {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(now);
+    const y = parts.find((p) => p.type === 'year')?.value || '0000';
+    const m = parts.find((p) => p.type === 'month')?.value || '00';
+    const d = parts.find((p) => p.type === 'day')?.value || '00';
+    return `${y}-${m}-${d}`;
+  } catch (_e) {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+function ensureDailyFreeQuotaSynced() {
+  if (isProUser) return;
+  try {
+    const today = getJstDateKey();
+    const storedDate = localStorage.getItem(LS_FREE_GEN_DATE_KEY) || '';
+    if (storedDate !== today) {
+      localStorage.setItem(LS_FREE_GEN_DATE_KEY, today);
+      localStorage.setItem(LS_FREE_GEN_TOTAL_KEY, '0');
+    }
+  } catch (_e) {
+    /* ignore */
+  }
+}
+
+function ensureDailySentenceTrialSynced() {
+  if (isProUser) return;
+  try {
+    const today = getJstDateKey();
+    const storedDate = localStorage.getItem(LS_SENTENCE_TRIAL_DATE_KEY) || '';
+    if (storedDate !== today) {
+      localStorage.setItem(LS_SENTENCE_TRIAL_DATE_KEY, today);
+      localStorage.setItem(LS_SENTENCE_TRIAL_COUNT_KEY, '0');
+    }
+  } catch (_e) {
+    /* ignore */
+  }
+}
+
+function getSentenceTrialUsedToday() {
+  ensureDailySentenceTrialSynced();
+  try {
+    return parseInt(localStorage.getItem(LS_SENTENCE_TRIAL_COUNT_KEY) || '0', 10) || 0;
+  } catch (_e) {
+    return 0;
+  }
+}
+
+function incrementSentenceTrialCount() {
+  if (isProUser) return;
+  ensureDailySentenceTrialSynced();
+  try {
+    localStorage.setItem(LS_SENTENCE_TRIAL_COUNT_KEY, String(getSentenceTrialUsedToday() + 1));
+  } catch (_e) {
+    /* ignore */
+  }
+}
+
+function canUseSentenceToday() {
+  if (isProUser) return true;
+  return getSentenceTrialUsedToday() < 1;
+}
+
+function updateSentenceTrialNotice(show) {
+  const el = document.getElementById('sentenceTrialNotice');
+  if (!el) return;
+  el.hidden = !show;
+}
 
 function getFreeGenerationsUsed() {
+  ensureDailyFreeQuotaSynced();
   try {
     return parseInt(localStorage.getItem(LS_FREE_GEN_TOTAL_KEY) || '0', 10) || 0;
   } catch (e) {
@@ -56,6 +136,7 @@ function getFreeGenerationsUsed() {
 
 function incrementFreeGenerationCount() {
   if (isProUser) return;
+  ensureDailyFreeQuotaSynced();
   try {
     const used = getFreeGenerationsUsed();
     localStorage.setItem(LS_FREE_GEN_TOTAL_KEY, String(used + 1));
@@ -164,7 +245,7 @@ function openFeatureLockedModal(feature) {
           bullets: [
             '自分専用の単語でプリント作成',
             '最大8単語まで入力可能',
-            'なぞり書き・試写に対応',
+            'なぞり書き・視写に対応',
           ],
         };
 
@@ -375,6 +456,8 @@ function applyPlanTierToUI() {
   refreshAnswerSheetRow();
   refreshOneClickRow();
   updateFreeGenQuotaUI();
+  ensureDailySentenceTrialSynced();
+  updateSentenceTrialNotice(false);
   refreshKatakanaGenerateNote();
   refreshKatakanaToggleRow();
   refreshKanaModeControl();
@@ -502,7 +585,12 @@ function generatePrint() {
       openPlanModal('ひらがな迷路は有料版で利用できます');
       return;
     }
+    if (content === 'sentence' && !canUseSentenceToday()) {
+      updateSentenceTrialNotice(true);
+      return;
+    }
   }
+  updateSentenceTrialNotice(false);
 
   const wantAnswers =
     isProUser && document.getElementById('includeAnswersSheet')?.checked;
@@ -519,6 +607,8 @@ function generatePrint() {
       return;
     }
     customPayload = { words, mode: selectedCustomMode };
+  } else if (content === 'sentence' && !isProUser && getSentenceTrialUsedToday() === 0) {
+    customPayload = { sentenceTrialQuality: true };
   }
 
   const overlay = document.getElementById('loadingOverlay');
@@ -544,6 +634,9 @@ function generatePrint() {
       section.style.display = 'block';
       section.scrollIntoView({ behavior: 'smooth', block: 'start' });
       incrementFreeGenerationCount();
+      if (content === 'sentence' && !isProUser) {
+        incrementSentenceTrialCount();
+      }
       updateFreeGenQuotaUI();
     } catch (e) {
       console.error('生成エラー:', e);

@@ -243,6 +243,7 @@
             <span class="option-icon">📚</span>
             <span class="option-label">文章問題</span>
             <span class="option-desc">どこで・だれが・なにを</span>
+            <span class="option-pro-badge">🔒有料（体験あり）</span>
           </button>
           <button class="option-btn content-btn" data-value="narabikae" aria-pressed="false">
             <span class="option-icon">🔀</span>
@@ -251,7 +252,7 @@
           </button>
           <button type="button" class="option-btn content-btn content-btn--custom" data-value="custom" aria-pressed="false" id="contentBtnCustom" title="有料版のみ">
             <span class="option-icon">✏️</span>
-            <span class="option-label">好きな単語（なぞり、試写）</span>
+            <span class="option-label">好きな単語（なぞり、視写）</span>
             <span class="option-desc">自分で入れた単語で練習</span>
             <span class="option-pro-badge">PRO</span>
           </button>
@@ -296,7 +297,7 @@
           </button>
           <button type="button" class="option-btn custom-mode-btn" data-value="copy" aria-pressed="false">
             <span class="option-icon">📝</span>
-            <span class="option-label">試写</span>
+            <span class="option-label">視写</span>
             <span class="option-desc">見て書きうつす</span>
           </button>
         </div>
@@ -407,6 +408,11 @@
           <i class="fas fa-info-circle"></i> もっと使うには有料版（上級・30問・解答付きなど）
           <button type="button" class="link-btn" onclick="openPlanModal()">詳しく見る</button>
         </p>
+        <div class="sentence-trial-notice no-print" id="sentenceTrialNotice" hidden>
+          <p class="sentence-trial-title">本日の無料体験は終了しました。</p>
+          <p class="sentence-trial-sub">文章問題は有料プランで無制限に利用できます。</p>
+          <button type="button" class="sentence-trial-btn" onclick="openPricingPage()">有料プランを見る</button>
+        </div>
       </div>
 
     </section>

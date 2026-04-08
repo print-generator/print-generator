@@ -122,7 +122,7 @@ function generatePrintHTML(content, level, count, showName, showDate, customPayl
   const chunks    = chunkCardsForPrint(cardHtmls, perPage);
   const withAnswers = !!includeAnswers && answers.length > 0;
 
-  let html = wrapPrintPagesHtml(chunks, header, instr, footer, !withAnswers);
+  let html = wrapPrintPagesHtml(chunks, header, instr, footer, !withAnswers, cardHtmls.length);
   if (withAnswers) {
     html += wrapAnswerPagesHtml(answers, meta, footer);
   }
@@ -206,8 +206,9 @@ function chunkCardsForPrint(cardHtmls, perPage) {
  * ページごとに print-page でラップ。先頭のみ header+instruction、最終のみ footer
  * @param {boolean} putFooterOnLastQuestionPage 解答ページを別途付ける場合は false（フッターは解答側へ）
  */
-function wrapPrintPagesHtml(chunks, header, instr, footer, putFooterOnLastQuestionPage) {
+function wrapPrintPagesHtml(chunks, header, instr, footer, putFooterOnLastQuestionPage, totalCards) {
   if (putFooterOnLastQuestionPage === undefined) putFooterOnLastQuestionPage = true;
+  const total = Number.isFinite(totalCards) ? totalCards : 0;
   return chunks
     .map((chunk, i, arr) => {
       const isFirst = i === 0;
@@ -216,6 +217,8 @@ function wrapPrintPagesHtml(chunks, header, instr, footer, putFooterOnLastQuesti
         'print-page',
         isFirst ? 'print-page--first' : '',
         isLast ? 'print-page--last' : '',
+        `print-page--cards-${chunk.length}`,
+        total > 0 ? `print-page--total-${total}` : '',
       ]
         .filter(Boolean)
         .join(' ');
@@ -235,7 +238,7 @@ function buildMeta(content, level) {
     joshi:    { label: '助詞',   emoji: '📝' },
     hiragana: { label: '50音', emoji: '🔤' },
     seikatsu: { label: '生活単語', emoji: '🏠' },
-    custom:   { label: '好きな単語（なぞり、試写）', emoji: '✏️' },
+    custom:   { label: '好きな単語（なぞり、視写）', emoji: '✏️' },
     maze:     { label: 'めいろ', emoji: '🧩' },
     maze_hiragana: { label: 'ひらがな迷路', emoji: '🧩' },
     sentence: { label: '文章問題', emoji: '📚' },
@@ -297,7 +300,7 @@ function buildInstruction(meta) {
     custom: {
       beginner:     'じぶんで いれた ことばを なぞって かきましょう。',
       intermediate: 'じぶんで いれた ことばを なぞって かきましょう。',
-      advanced:     'ことばを みて、したの ますに ししゃ しましょう。',
+      advanced:     'ことばを みて、したの ますに 視写しましょう。',
     },
     maze: {
       beginner:     'スタートから ゴールまで すすみましょう。',
@@ -384,7 +387,7 @@ function buildQuestionBodyStructured(content, level, count, customPayload, allow
       advanced: buildNarabikaeAdvanced,
     },
   };
-  return builders[content][level](count, '', !!allowKatakana, kanaMode || 'mix', level);
+  return builders[content][level](count, customPayload || '', !!allowKatakana, kanaMode || 'mix', level);
 }
 
 /** @deprecated 直接は使わず buildQuestionBodyStructured を優先 */
@@ -1134,8 +1137,20 @@ function buildThreeChoices(correct, pool) {
   return shuffle([correct, ...wrong]);
 }
 
-function buildSentenceBeginner(count) {
-  const scenes = pickUniqueScenes(count);
+function buildSentenceBeginner(count, payload) {
+  const trialSet = [
+    { where: 'こうえん', who: 'おとこのこ', action: 'あそんでいます', sentence: 'こうえんで おとこのこが あそんでいます。' },
+    { where: 'いえ', who: 'いぬ', action: 'ねています', sentence: 'いえで いぬが ねています。' },
+    { where: 'がっこう', who: 'せんせい', action: 'よんでいます', sentence: 'がっこうで せんせいが よんでいます。' },
+    { where: 'みち', who: 'ねこ', action: 'あるいています', sentence: 'みちで ねこが あるいています。' },
+    { where: 'こうてい', who: 'おんなのこ', action: 'はしっています', sentence: 'こうていで おんなのこが はしっています。' },
+  ];
+  let scenes = payload && payload.sentenceTrialQuality
+    ? trialSet.slice(0, Math.min(count, trialSet.length))
+    : pickUniqueScenes(count);
+  if (scenes.length < count) {
+    scenes = scenes.concat(pickUniqueScenes(count - scenes.length));
+  }
   const qKinds = ['who', 'where', 'action'];
   const cards = scenes.map((s, i) => {
     const qKind = qKinds[i % qKinds.length];

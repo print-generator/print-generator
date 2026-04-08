@@ -48,6 +48,8 @@ const LS_FREE_GEN_TOTAL_KEY = 'homePrint_freeGenTotal_v2';
 const LS_FREE_GEN_DATE_KEY = 'homePrint_freeGenDateJst_v2';
 const LS_SENTENCE_TRIAL_DATE_KEY = 'homePrint_sentenceTrialDateJst_v1';
 const LS_SENTENCE_TRIAL_COUNT_KEY = 'homePrint_sentenceTrialCount_v1';
+const LS_NARABIKAE_TRIAL_DATE_KEY = 'homePrint_narabikaeTrialDateJst_v1';
+const LS_NARABIKAE_TRIAL_COUNT_KEY = 'homePrint_narabikaeTrialCount_v1';
 
 function getJstDateKey() {
   try {
@@ -119,9 +121,61 @@ function canUseSentenceToday() {
   return getSentenceTrialUsedToday() < 1;
 }
 
-function updateSentenceTrialNotice(show) {
+function ensureDailyNarabikaeTrialSynced() {
+  if (isProUser) return;
+  try {
+    const today = getJstDateKey();
+    const storedDate = localStorage.getItem(LS_NARABIKAE_TRIAL_DATE_KEY) || '';
+    if (storedDate !== today) {
+      localStorage.setItem(LS_NARABIKAE_TRIAL_DATE_KEY, today);
+      localStorage.setItem(LS_NARABIKAE_TRIAL_COUNT_KEY, '0');
+    }
+  } catch (_e) {
+    /* ignore */
+  }
+}
+
+function getNarabikaeTrialUsedToday() {
+  ensureDailyNarabikaeTrialSynced();
+  try {
+    return parseInt(localStorage.getItem(LS_NARABIKAE_TRIAL_COUNT_KEY) || '0', 10) || 0;
+  } catch (_e) {
+    return 0;
+  }
+}
+
+function incrementNarabikaeTrialCount() {
+  if (isProUser) return;
+  ensureDailyNarabikaeTrialSynced();
+  try {
+    localStorage.setItem(LS_NARABIKAE_TRIAL_COUNT_KEY, String(getNarabikaeTrialUsedToday() + 1));
+  } catch (_e) {
+    /* ignore */
+  }
+}
+
+function canUseNarabikaeToday() {
+  if (isProUser) return true;
+  return getNarabikaeTrialUsedToday() < 1;
+}
+
+function updateTrialNotice(show, featureName = '', mode = 'limit') {
   const el = document.getElementById('sentenceTrialNotice');
+  const title = document.getElementById('trialNoticeTitle');
+  const sub = document.getElementById('trialNoticeSub');
+  const btn = el?.querySelector('.sentence-trial-btn');
   if (!el) return;
+  if (show && title && sub) {
+    if (mode === 'after-first-use') {
+      title.textContent = `${featureName || 'この機能'}を試せました！`;
+      sub.textContent = 'この機能は有料プランで無制限に使えます。';
+      if (btn) btn.textContent = '有料プランを見る';
+    } else {
+      title.textContent = '本日の無料体験は終了しました。';
+      sub.textContent = `${featureName || 'この機能'}は有料プランで無制限に利用できます。`;
+      if (btn) btn.textContent = '300円で使い放題';
+    }
+  }
   el.hidden = !show;
 }
 
@@ -237,6 +291,7 @@ function openFeatureLockedModal(feature) {
           bullets: [
             'ひらがな＋カタカナの出題に対応',
             '学習状況に合わせてON/OFF切り替え可能',
+            '300円で使い放題',
           ],
         }
       : {
@@ -246,6 +301,7 @@ function openFeatureLockedModal(feature) {
             '自分専用の単語でプリント作成',
             '最大8単語まで入力可能',
             'なぞり書き・視写に対応',
+            '300円で使い放題',
           ],
         };
 
@@ -457,7 +513,8 @@ function applyPlanTierToUI() {
   refreshOneClickRow();
   updateFreeGenQuotaUI();
   ensureDailySentenceTrialSynced();
-  updateSentenceTrialNotice(false);
+  ensureDailyNarabikaeTrialSynced();
+  updateTrialNotice(false);
   refreshKatakanaGenerateNote();
   refreshKatakanaToggleRow();
   refreshKanaModeControl();
@@ -552,6 +609,10 @@ if (document.readyState === 'loading') {
   applyPlanTierToUI();
 }
 
+document.getElementById('trialNoticeCloseBtn')?.addEventListener('click', () => {
+  updateTrialNotice(false);
+});
+
 /* ════════════════════════════════════════
    プリント生成
 ════════════════════════════════════════ */
@@ -586,14 +647,20 @@ function generatePrint() {
       return;
     }
     if (content === 'sentence' && !canUseSentenceToday()) {
-      updateSentenceTrialNotice(true);
+      updateTrialNotice(true, '文章問題', 'limit');
+      return;
+    }
+    if (content === 'narabikae' && !canUseNarabikaeToday()) {
+      updateTrialNotice(true, '並び替え', 'limit');
       return;
     }
   }
-  updateSentenceTrialNotice(false);
+  updateTrialNotice(false);
 
   const wantAnswers =
     isProUser && document.getElementById('includeAnswersSheet')?.checked;
+  const isSentenceFirstTrial = content === 'sentence' && !isProUser && getSentenceTrialUsedToday() === 0;
+  const isNarabikaeFirstTrial = content === 'narabikae' && !isProUser && getNarabikaeTrialUsedToday() === 0;
 
   let customPayload = null;
   if (content === 'custom') {
@@ -636,6 +703,10 @@ function generatePrint() {
       incrementFreeGenerationCount();
       if (content === 'sentence' && !isProUser) {
         incrementSentenceTrialCount();
+        if (isSentenceFirstTrial) updateTrialNotice(true, '文章問題', 'after-first-use');
+      } else if (content === 'narabikae' && !isProUser) {
+        incrementNarabikaeTrialCount();
+        if (isNarabikaeFirstTrial) updateTrialNotice(true, '並び替え', 'after-first-use');
       }
       updateFreeGenQuotaUI();
     } catch (e) {
@@ -1027,6 +1098,7 @@ function openPlanModal(contextMessage) {
       '<li>解答付きプリントが使える</li>',
       '<li>問題生成回数が無制限</li>',
       '<li>ワンクリック自動生成が使える</li>',
+      '<li>300円で使い放題</li>',
     ].join('');
   }
   if (line) line.textContent = '有料版のお申し込みはLINEから';

@@ -1922,6 +1922,27 @@ body.lp-pricing-page {
     transform: none !important;
   }
 
+  /* 高さ固定や隠しを解除し、1ページ目下部の欠けを防ぐ */
+  .generator-section,
+  .section-inner,
+  .preview-section,
+  .print-target,
+  .print-area,
+  .a4-wrapper,
+  .a4-sheet,
+  .print-page {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* 余白をわずかに最適化（切れ防止優先） */
+  .a4-sheet {
+    padding-top: 2.5mm !important;
+    padding-bottom: 2.5mm !important;
+  }
+
   /* @page 余白の内側いっぱい（物理210mm 固定はせず、印刷ボックス幅に一致） */
   .print-area,
   .a4-wrapper {
@@ -1967,6 +1988,8 @@ body.lp-pricing-page {
   }
   .print-page {
     overflow: visible !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
   .questions-grid {
@@ -1985,8 +2008,9 @@ body.lp-pricing-page {
     page-break-inside: avoid !important;
     -webkit-column-break-inside: avoid !important;
     border: 1.5pt solid #dadce0 !important;
-    padding: 2pt 4pt !important;
-    margin-bottom: 1.1mm !important;
+    padding: 1.6pt 3.8pt !important;
+    margin-bottom: 0.8mm !important;
+    overflow: visible !important;
   }
   .maze-svg {
     min-height: 84mm !important;
@@ -2063,9 +2087,9 @@ body.lp-pricing-page {
 
   .question-card .choice-sentence,
   .question-card .desc-sentence {
-    margin-bottom: 1pt !important;
-    font-size: 10pt !important;
-    line-height: 1.24 !important;
+    margin-bottom: 0.7pt !important;
+    font-size: 9.7pt !important;
+    line-height: 1.2 !important;
   }
 
   .question-card .trace-area {
@@ -2098,7 +2122,7 @@ body.lp-pricing-page {
 
   .question-card .emoji-question-prompt {
     margin-bottom: 0 !important;
-    line-height: 1.22 !important;
+    line-height: 1.18 !important;
   }
 
   .question-card .adv-prompt {
@@ -2110,8 +2134,8 @@ body.lp-pricing-page {
     line-height: 1.2 !important;
   }
   .answer-line {
-    height: 24px !important;
-    margin-top: 2px !important;
+    height: 20px !important;
+    margin-top: 1px !important;
   }
 
   /* 問題数別の密度チューニング（可読性を維持しつつ最大密度寄り） */

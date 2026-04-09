@@ -444,7 +444,28 @@ body {
 .option-grid--four {
   grid-template-columns: repeat(2, 1fr);
 }
+/* STEP1 ジャンル名：改行で高さが増えないよう1行に固定（はみ出し時は省略） */
+#contentOptions .option-btn {
+  min-width: 0;
+  padding: 16px 8px;
+}
+#contentOptions .option-label {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-size: clamp(0.78rem, 2.35vw, 1rem);
+  padding: 0 2px;
+}
 @media (min-width: 720px) {
+  #contentOptions .option-btn {
+    padding: 18px 10px;
+  }
   .option-grid--four {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -813,10 +834,26 @@ body.plan-free .content-btn--custom:not(.active) {
 }
 .print-header {
   display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 8px;
   margin-bottom: 10px; padding-bottom: 8px;
   border-bottom: 3px solid var(--primary);
 }
-.print-title-block .print-category { font-size: .78rem; color: var(--primary); font-weight: 700; letter-spacing: .06em; margin-bottom: 4px; }
+.print-title-block {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+/* プリント上部のジャンル行：1行固定（印刷の縦幅節約・レイアウト安定） */
+.print-title-block .print-category {
+  font-size: clamp(0.68rem, 1.65vw, 0.78rem);
+  color: var(--primary);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.15;
+}
 .print-title-block .print-title { font-size: 1.6rem; font-weight: 900; color: var(--text); letter-spacing: .04em; }
 .print-info-block { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
 .print-info-row { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
@@ -863,13 +900,21 @@ body.plan-free .content-btn--custom:not(.active) {
   background: var(--primary-light);
   border-left: 4px solid var(--primary);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  padding: 8px 12px;
+  padding: 8px 8px;
   margin-bottom: 10px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .print-continuation-kicker {
   font-size: 0.72rem;
   color: var(--text-sub);
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
 }
 .print-continuation-title {
   font-size: 0.95rem;
@@ -2074,8 +2119,11 @@ body.lp-pricing-page {
   .print-continuation-strip {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    padding: 4pt 8pt !important;
+    padding: 4pt 6pt !important;
     margin-bottom: 6pt !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
     border-left: 3pt solid #1a73e8 !important;
     background: #e8f0fe !important;
     border-radius: 0 4pt 4pt 0 !important;
@@ -2084,6 +2132,12 @@ body.lp-pricing-page {
     font-size: 7pt !important;
     color: #5f6368 !important;
     font-weight: 600 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    letter-spacing: 0.02em !important;
+    line-height: 1.15 !important;
+    max-width: 100% !important;
   }
   .print-continuation-title {
     font-size: 9.5pt !important;
@@ -2270,8 +2324,19 @@ body.lp-pricing-page {
   .print-title {
     font-size: 15pt !important;
   }
+  .print-header .print-title-block {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    max-width: 100% !important;
+  }
   .print-category {
-    font-size: 8pt !important;
+    font-size: 7.5pt !important;
+    letter-spacing: 0.02em !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
   }
   .print-instruction {
     font-size: 8pt !important;

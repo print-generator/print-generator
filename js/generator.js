@@ -157,12 +157,14 @@ function wrapAnswerPagesHtml(answers, meta, footer) {
 
 /**
  * 1 print-page あたりの問題数（HTML 単位の改ページ。カード途中分割はしない）
- * 6問を原則1ページに収めるため、軽いモードは 6 問／ページを優先。記述多めの上級は控えめに。
+ * 文章・並び替えは印刷プレビューで「5問／ページ」を前提にレイアウト。めいろ系は大きさのため2問。
+ * 助詞・ひらがな・生活などは従来どおり最大6問（印刷CSSの cards-6 で密度調整）。
  */
 function getCardsPerPage(content, level) {
   if (content === 'maze' || content === 'maze_hiragana') return 2;
-  if (content === 'sentence') return level === 'advanced' ? 4 : 5;
-  if (content === 'narabikae') return level === 'advanced' ? 4 : 5;
+  /* 文章・並び替えは印刷を5問/ページ基準で組む（上級も5） */
+  if (content === 'sentence') return 5;
+  if (content === 'narabikae') return 5;
   if (content === 'joshi') {
     return level === 'advanced' ? 4 : 6;
   }
@@ -182,8 +184,7 @@ function getCardsPerPage(content, level) {
  */
 function getCardsPerPageForMobilePdf(content, level) {
   if (content === 'maze' || content === 'maze_hiragana') return 1;
-  if (content === 'sentence') return level === 'advanced' ? 3 : 4;
-  if (content === 'narabikae') return level === 'advanced' ? 3 : 4;
+  if (content === 'sentence' || content === 'narabikae') return 4;
   if (content === 'joshi' || content === 'seikatsu' || content === 'custom') {
     return level === 'advanced' ? 3 : 4;
   }
@@ -441,8 +442,7 @@ function buildJoshiAdvanced(count, _cw) {
   const answers = data.map((q) => q.answer || '');
   const cards = data.map((q, i) => {
     const inner = `
-      <div class="desc-sentence">${q.sentence}</div>
-      <div class="hint-line">ヒント：${q.hint}</div>
+      <div class="desc-sentence desc-with-hint"><span class="desc-main">${q.sentence}</span><span class="hint-inline">　ヒント：${q.hint}</span></div>
       <div class="answer-line"></div>`;
     return questionCard(i + 1, inner);
   });
@@ -668,7 +668,7 @@ function buildCustomCopy(count, words) {
 function questionCard(num, innerHtml) {
   return `<div class="question-card">
     <div class="question-num">${num}</div>
-    ${innerHtml}
+    <div class="question-card-content">${innerHtml}</div>
   </div>`;
 }
 
@@ -1165,8 +1165,10 @@ function buildSentenceBeginner(count, payload) {
     const correct = qKind === 'who' ? s.who : qKind === 'where' ? s.where : s.action;
     const choices = buildThreeChoices(correct, choicePool);
     const choicesHtml = choices.map((c) => `<span class="choice-item">${c}</span>`).join('');
-    const inner = `<div class="choice-sentence">${s.sentence}</div>
-      <div class="emoji-question-prompt">しつもん：${questionText}</div>
+    const inner = `<div class="sentence-row-head choice-sentence">
+        <span class="sentence-inline-q">しつもん：${questionText}</span>
+        <span class="sentence-inline-body">${s.sentence}</span>
+      </div>
       <div class="choices-row">${choicesHtml}</div>`;
     return questionCard(i + 1, inner);
   });
@@ -1184,8 +1186,10 @@ function buildSentenceIntermediate(count) {
     const qKind = qKinds[i % qKinds.length];
     const questionText =
       qKind === 'who' ? 'だれが？' : qKind === 'where' ? 'どこで？' : 'なにをしている？';
-    const inner = `<div class="choice-sentence">${s.sentence}</div>
-      <div class="emoji-question-prompt">しつもん：${questionText}（ことばで かこう）</div>
+    const inner = `<div class="sentence-row-head choice-sentence">
+        <span class="sentence-inline-q">しつもん：${questionText}（ことばで かこう）</span>
+        <span class="sentence-inline-body">${s.sentence}</span>
+      </div>
       <div class="answer-line"></div>`;
     return questionCard(i + 1, inner);
   });
@@ -1247,8 +1251,10 @@ function buildSentenceAdvanced(count) {
         : qType === 1
           ? `だれが どこで ${s.action}か。`
           : 'どこで なにを していますか。';
-    const inner = `<div class="choice-sentence">${s.sentence}</div>
-      <div class="emoji-question-prompt">しつもん：${pattern}</div>
+    const inner = `<div class="sentence-row-head choice-sentence">
+        <span class="sentence-inline-q">しつもん：${pattern}</span>
+        <span class="sentence-inline-body">${s.sentence}</span>
+      </div>
       <div class="answer-line"></div>`;
     return questionCard(i + 1, inner);
   });
@@ -1291,9 +1297,11 @@ function buildNarabikaeCard(num, level) {
   const made = buildNarabikaeSentence(level);
   const shuffled = shuffle(made.parts);
   const chips = shuffled.map((p) => `<span class="choice-item">${p}</span>`).join('');
-  const inner = `<div class="emoji-question-prompt">ことばを ならべかえて、ただしい ぶんを つくろう</div>
+  const inner = `<div class="narabikae-head-row emoji-question-prompt">
+      <span class="narabikae-head-label">ことばを ならべかえて、ただしい ぶんを つくろう</span>
+      <span class="narabikae-head-sub">こたえを したに かこう</span>
+    </div>
     <div class="choices-row">${chips}</div>
-    <div class="adv-prompt-sub">こたえを したに かこう</div>
     <div class="answer-line"></div>`;
   return { html: questionCard(num, inner), answer: made.answer };
 }

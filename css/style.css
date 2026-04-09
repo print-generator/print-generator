@@ -849,7 +849,7 @@ body.plan-free .content-btn--custom:not(.active) {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 .question-num {
   display: inline-flex; align-items: center; justify-content: center;
@@ -858,46 +858,30 @@ body.plan-free .content-btn--custom:not(.active) {
   width: 22px; height: 22px; border-radius: 50%; margin-bottom: 0;
   flex-shrink: 0;
 }
-.sentence-row-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
+/* 続きページ用（画面上は非表示想定だが、プレビューで確認できるようスタイルのみ） */
+.print-continuation-strip {
+  background: var(--primary-light);
+  border-left: 4px solid var(--primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 8px 12px;
+  margin-bottom: 10px;
 }
-.sentence-inline-q {
-  font-size: 0.78rem;
-  color: var(--text-sub);
-  font-weight: 700;
-  white-space: nowrap;
-}
-.sentence-inline-body {
-  font-weight: 600;
-  flex: 1 1 12rem;
-  min-width: 0;
-}
-.desc-with-hint {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 6px;
-}
-.desc-with-hint .hint-inline {
-  font-size: 0.74rem;
-  color: var(--text-sub);
-  font-weight: 500;
-}
-.narabikae-head-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 8px;
-  margin-bottom: 0;
-}
-.narabikae-head-label { font-weight: 600; }
-.narabikae-head-sub {
+.print-continuation-kicker {
   font-size: 0.72rem;
   color: var(--text-sub);
   font-weight: 600;
+}
+.print-continuation-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+  margin-top: 2px;
+}
+.print-continuation-hint {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.45;
 }
 .trace-area { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 2rem; line-height: 1.15; letter-spacing: .08em; margin-top: 2px; }
 .trace-char { color: var(--text); font-weight: 700; }
@@ -2026,12 +2010,6 @@ body.lp-pricing-page {
     overflow: visible !important;
   }
 
-  /* 余白をわずかに最適化（切れ防止優先） */
-  .a4-sheet {
-    padding-top: 2mm !important;
-    padding-bottom: 2mm !important;
-  }
-
   /* @page 余白の内側いっぱい（物理210mm 固定はせず、印刷ボックス幅に一致） */
   .print-area,
   .a4-wrapper {
@@ -2055,8 +2033,8 @@ body.lp-pricing-page {
     max-width: 100% !important;
     min-width: 0 !important;
     min-height: 0 !important;
-    /* 用紙余白は @page に任せ、シート内は軽い内側余白のみ */
-    padding: 3mm 4mm !important;
+    /* 用紙余白は @page に任せ、シート内は軽い内側余白のみ（強い詰め込み前のバランスに戻す） */
+    padding: 4mm 5mm !important;
     margin: 0 auto !important;
     box-shadow: none !important;
     border-radius: 0 !important;
@@ -2087,62 +2065,63 @@ body.lp-pricing-page {
     gap: 0 !important;
   }
 
-  /* ── ⑥ 問題カード：改ページ制御
-     以前は .question-num と本文が兄弟グリッド子だったが、本文側に複数ブロックがあると
-     3つ目以降が左列（番号の下）に回り込み、番号だけが独立した行に見える／高さを浪費していた。
-     generator.js の .question-card-content で内側を1ブロックにまとめ、ここでは5問/ページ前提で縦方向を詰める。 */
+  /*
+   * ページ別レイアウト（仕様）
+   * - .print-page--first … generator が 1 ページ目にだけフルヘッダー＋説明を出す。問題数は原則4（.print-page--cards-4）。
+   * - .print-page--continuation … 2 ページ目以降は .print-continuation-strip のみで縦を確保し、問題数は原則5（.print-page--cards-5）。
+   * .question-card-content は複数ブロックを左列に回り込ませないためのラッパ（構造上の必須）。
+   */
+  .print-continuation-strip {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    padding: 4pt 8pt !important;
+    margin-bottom: 6pt !important;
+    border-left: 3pt solid #1a73e8 !important;
+    background: #e8f0fe !important;
+    border-radius: 0 4pt 4pt 0 !important;
+  }
+  .print-continuation-kicker {
+    font-size: 7pt !important;
+    color: #5f6368 !important;
+    font-weight: 600 !important;
+  }
+  .print-continuation-title {
+    font-size: 9.5pt !important;
+    font-weight: 800 !important;
+    color: #174ea6 !important;
+    margin-top: 1pt !important;
+  }
+  .print-continuation-hint {
+    margin: 3pt 0 0 !important;
+    font-size: 7.8pt !important;
+    line-height: 1.3 !important;
+    color: #3c4043 !important;
+  }
+
+  /* ── ⑥ 問題カード：改ページ制御（カード途中分割はしない） */
   .question-card {
     display: grid !important;
-    grid-template-columns: 13pt 1fr !important;
+    grid-template-columns: 15pt 1fr !important;
     align-items: start !important;
-    column-gap: 3pt !important;
+    column-gap: 4pt !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
     -webkit-column-break-inside: avoid !important;
     border: 1.5pt solid #dadce0 !important;
-    /* 旧 1.6pt 上下 ≒0.56mm/辺 → さらに各辺約0.5mm削減して実用優先 */
-    padding: 0.25mm 0.9mm !important;
-    margin-bottom: 0.35mm !important;
+    padding: 1.6pt 3.8pt !important;
     overflow: visible !important;
+  }
+  .print-page--first .question-card {
+    margin-bottom: 0.85mm !important;
+  }
+  .print-page--continuation .question-card {
+    margin-bottom: 0.55mm !important;
   }
   .question-card-content {
     display: flex !important;
     flex-direction: column !important;
-    gap: 0.35mm !important;
+    gap: 1.4mm !important;
     min-width: 0 !important;
-  }
-  /* 1ページ5〜6問：余白をさらに削る（助詞・ひらがなの6問ページも同列で扱う） */
-  .print-page--cards-5 .question-card,
-  .print-page--cards-6 .question-card {
-    padding: 0.2mm 0.85mm !important;
-    margin-bottom: 0.3mm !important;
-  }
-  .print-page--cards-5 .question-card-content,
-  .print-page--cards-6 .question-card-content {
-    gap: 0.3mm !important;
-  }
-  .print-page--cards-5 .question-card .choice-item,
-  .print-page--cards-6 .question-card .choice-item {
-    font-size: 8.3pt !important;
-    padding: 0.65pt 4.5pt !important;
-  }
-  .print-page--cards-5 .question-card .trace-area,
-  .print-page--cards-6 .question-card .trace-area {
-    font-size: 14.5pt !important;
-    line-height: 1.08 !important;
-  }
-  .print-page--cards-5 .question-card .trace-second-row,
-  .print-page--cards-6 .question-card .trace-second-row {
-    margin-top: 0.5pt !important;
-  }
-  .print-page--cards-5 .question-card .hiragana-grid,
-  .print-page--cards-6 .question-card .hiragana-grid {
-    gap: 2mm !important;
-  }
-  .print-page--cards-5 .question-card .hira-write,
-  .print-page--cards-6 .question-card .hira-write {
-    width: 11mm !important;
-    height: 11mm !important;
   }
   .maze-svg {
     min-height: 84mm !important;
@@ -2210,52 +2189,25 @@ body.lp-pricing-page {
     margin-bottom: 0 !important;
   }
   .question-num {
-    width: 13pt !important;
-    height: 13pt !important;
-    font-size: 6.8pt !important;
+    width: 14pt !important;
+    height: 14pt !important;
+    font-size: 7pt !important;
     margin: 0 !important;
     align-self: start !important;
   }
 
-  .sentence-row-head {
-    margin-bottom: 0 !important;
-    gap: 3pt 6pt !important;
-    align-items: baseline !important;
-  }
-  .sentence-inline-q {
-    font-size: 7.6pt !important;
-    line-height: 1.15 !important;
-    color: #4a4a4a !important;
-  }
-  .sentence-inline-body {
-    font-size: 9.5pt !important;
-    line-height: 1.18 !important;
-  }
-  .desc-with-hint .desc-main {
-    font-size: 9.5pt !important;
-    line-height: 1.18 !important;
-  }
-  .desc-with-hint .hint-inline {
-    font-size: 7.2pt !important;
-    line-height: 1.15 !important;
-  }
-  .narabikae-head-row {
-    gap: 2pt 6pt !important;
-    margin-bottom: 0 !important;
-    line-height: 1.18 !important;
-  }
-  .narabikae-head-label {
-    font-size: 8.4pt !important;
-  }
-  .narabikae-head-sub {
-    font-size: 7.1pt !important;
-  }
-
   .question-card .choice-sentence,
   .question-card .desc-sentence {
-    margin-bottom: 0 !important;
-    font-size: 9.5pt !important;
-    line-height: 1.18 !important;
+    margin-bottom: 0.7pt !important;
+    font-size: 9.7pt !important;
+    line-height: 1.22 !important;
+  }
+
+  .question-card .hint-line {
+    font-size: 7.4pt !important;
+    line-height: 1.25 !important;
+    color: #5f6368 !important;
+    margin-bottom: 3pt !important;
   }
 
   .question-card .trace-area {
@@ -2269,13 +2221,12 @@ body.lp-pricing-page {
   }
 
   .question-card .choices-row {
-    gap: 1.2pt !important;
-    margin-top: 0 !important;
+    gap: 1.5pt !important;
   }
 
   .question-card .choice-item {
-    font-size: 8.6pt !important;
-    padding: 0.8pt 5pt !important;
+    font-size: 9pt !important;
+    padding: 1pt 6pt !important;
   }
 
   .question-card .hiragana-grid {
@@ -2284,129 +2235,35 @@ body.lp-pricing-page {
 
   .question-card .emoji-question-row,
   .question-card .emoji-question-row--tight {
-    gap: 3pt !important;
+    gap: 4pt !important;
   }
 
   .question-card .emoji-question-prompt {
-    margin-bottom: 0 !important;
-    line-height: 1.14 !important;
+    margin-bottom: 2pt !important;
+    line-height: 1.2 !important;
   }
 
   .question-card .adv-prompt {
-    margin-bottom: 0.5pt !important;
+    margin-bottom: 3pt !important;
   }
 
   .question-card .adv-prompt-sub {
-    margin-bottom: 0.5pt !important;
-    line-height: 1.14 !important;
-  }
-  .print-page--cards-5 .question-card .emoji-large,
-  .print-page--cards-6 .question-card .emoji-large {
-    font-size: 17pt !important;
+    margin-bottom: 3pt !important;
+    line-height: 1.25 !important;
   }
   .answer-line {
-    height: 16px !important;
-    margin-top: 0 !important;
+    height: 20px !important;
+    margin-top: 2px !important;
   }
 
-  /* 問題数別の密度チューニング（可読性を維持しつつ最大密度寄り） */
-  .print-page--total-8 .question-card,
-  .print-page--total-10 .question-card,
-  .print-page--total-12 .question-card {
-    padding: 0.22mm 0.88mm !important;
-    margin-bottom: 0.32mm !important;
-  }
-  .print-page--total-8 .question-card .choice-sentence,
-  .print-page--total-10 .question-card .choice-sentence,
-  .print-page--total-12 .question-card .choice-sentence,
-  .print-page--total-8 .question-card .desc-sentence,
-  .print-page--total-10 .question-card .desc-sentence,
-  .print-page--total-12 .question-card .desc-sentence {
-    font-size: 9.6pt !important;
-    line-height: 1.2 !important;
-    margin-bottom: 0.8pt !important;
-  }
-  .print-page--total-8 .question-card .choice-item,
-  .print-page--total-10 .question-card .choice-item,
-  .print-page--total-12 .question-card .choice-item {
-    font-size: 8.6pt !important;
-    padding: 0.9pt 5.5pt !important;
-  }
-  .print-page--total-8 .answer-line,
-  .print-page--total-10 .answer-line,
-  .print-page--total-12 .answer-line {
-    height: 16px !important;
-  }
-
-  .print-page--total-15 .question-card,
-  .print-page--total-20 .question-card,
-  .print-page--total-30 .question-card {
-    padding: 0.2mm 0.8mm !important;
-    margin-bottom: 0.3mm !important;
-  }
-  .print-page--total-15 .question-num,
-  .print-page--total-20 .question-num,
-  .print-page--total-30 .question-num {
-    width: 13pt !important;
-    height: 13pt !important;
-    font-size: 6.7pt !important;
-  }
+  /* 問題数が多いプリント向け：やや小さめ（ページ分割とは独立した微調整） */
   .print-page--total-15 .question-card .choice-sentence,
   .print-page--total-20 .question-card .choice-sentence,
   .print-page--total-30 .question-card .choice-sentence,
   .print-page--total-15 .question-card .desc-sentence,
   .print-page--total-20 .question-card .desc-sentence,
   .print-page--total-30 .question-card .desc-sentence {
-    font-size: 9.2pt !important;
-    line-height: 1.18 !important;
-    margin-bottom: 0.7pt !important;
-  }
-  .print-page--total-15 .question-card .emoji-question-prompt,
-  .print-page--total-20 .question-card .emoji-question-prompt,
-  .print-page--total-30 .question-card .emoji-question-prompt,
-  .print-page--total-15 .question-card .adv-prompt-sub,
-  .print-page--total-20 .question-card .adv-prompt-sub,
-  .print-page--total-30 .question-card .adv-prompt-sub,
-  .print-page--total-15 .question-card .hint-line,
-  .print-page--total-20 .question-card .hint-line,
-  .print-page--total-30 .question-card .hint-line {
-    font-size: 7.1pt !important;
-    line-height: 1.14 !important;
-  }
-  .print-page--total-15 .question-card .choice-item,
-  .print-page--total-20 .question-card .choice-item,
-  .print-page--total-30 .question-card .choice-item {
-    font-size: 8.2pt !important;
-    padding: 0.8pt 5pt !important;
-  }
-  .print-page--total-15 .answer-line,
-  .print-page--total-20 .answer-line,
-  .print-page--total-30 .answer-line {
-    height: 15px !important;
-  }
-
-  /* 20問以上はさらに僅かに圧縮（可読性を保つ範囲） */
-  .print-page--total-20 .question-card,
-  .print-page--total-30 .question-card {
-    padding: 0.18mm 0.75mm !important;
-    margin-bottom: 0.28mm !important;
-  }
-  .print-page--total-20 .question-card .choice-sentence,
-  .print-page--total-30 .question-card .choice-sentence,
-  .print-page--total-20 .question-card .desc-sentence,
-  .print-page--total-30 .question-card .desc-sentence {
-    font-size: 8.9pt !important;
-    line-height: 1.15 !important;
-    margin-bottom: 0.6pt !important;
-  }
-  .print-page--total-20 .question-card .choice-item,
-  .print-page--total-30 .question-card .choice-item {
-    font-size: 7.9pt !important;
-    padding: 0.7pt 4.4pt !important;
-  }
-  .print-page--total-20 .answer-line,
-  .print-page--total-30 .answer-line {
-    height: 14px !important;
+    font-size: 9.3pt !important;
   }
 
   /* ── ⑦ フォント・色を印刷向けに最適化（必要最低限で一段小さく） ── */
@@ -2417,12 +2274,19 @@ body.lp-pricing-page {
     font-size: 8pt !important;
   }
   .print-instruction {
-    font-size: 7.6pt !important;
-    padding: 0.8pt 3.5pt !important;
-    margin-bottom: 1mm !important;
-    line-height: 1.2 !important;
+    font-size: 8pt !important;
+    padding: 1pt 4pt !important;
+    margin-bottom: 1.5mm !important;
+    line-height: 1.3 !important;
     border-left: 3pt solid #1a73e8 !important;
     background: #e8f0fe !important;
+  }
+  /* 1ページ目のみ：説明ボックスをやや広め（上書きはこの直後に置く） */
+  .print-page--first .print-instruction {
+    padding: 6pt 9pt !important;
+    margin-bottom: 10pt !important;
+    font-size: 8.5pt !important;
+    line-height: 1.35 !important;
   }
 
   /* ── ⑧ なぞり書き文字：色を明確に出す ── */
@@ -2483,12 +2347,12 @@ body.lp-pricing-page {
     border-bottom: 1.5pt solid #c5daff !important;
   }
 
-  /* ── ⑫ プリントヘッダーの区切り線 ── */
+  /* ── ⑫ プリントヘッダーの区切り線（1ページ目の .print-page--first にのみ存在） ── */
   .print-header {
     flex-shrink: 0 !important;
     border-bottom: 2pt solid #1a73e8 !important;
-    margin-bottom: 0.6mm !important;
-    padding-bottom: 0.6mm !important;
+    margin-bottom: 1mm !important;
+    padding-bottom: 1mm !important;
   }
   .print-info-block {
     gap: 9pt !important;
@@ -2586,6 +2450,12 @@ body.lp-pricing-page {
 }
 .pdf-capturing .print-instruction {
   background: #e8f0fe !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+.pdf-capturing .print-continuation-strip {
+  background: #e8f0fe !important;
+  border-left-color: #1a73e8 !important;
   -webkit-print-color-adjust: exact !important;
   print-color-adjust: exact !important;
 }

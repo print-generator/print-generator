@@ -118,11 +118,13 @@ function generatePrintHTML(content, level, count, showName, showDate, customPayl
     result = buildQuestionBodyStructured(content, level, count, customPayload, !!allowKatakana, kanaMode || 'mix');
   }
   const { cardHtmls, answers } = result;
-  const perPage   = getCardsPerPage(content, level);
-  const chunks    = chunkCardsForPrint(cardHtmls, perPage);
+  const chunks = usesFirstFourRestFiveLayout(content)
+    ? chunkCardsFirstPageRest(cardHtmls, 4, 5)
+    : chunkCardsForPrint(cardHtmls, getCardsPerPage(content, level));
+  const continuationStrip = buildPrintContinuationStrip(meta);
   const withAnswers = !!includeAnswers && answers.length > 0;
 
-  let html = wrapPrintPagesHtml(chunks, header, instr, footer, !withAnswers, cardHtmls.length);
+  let html = wrapPrintPagesHtml(chunks, header, instr, continuationStrip, footer, !withAnswers, cardHtmls.length);
   if (withAnswers) {
     html += wrapAnswerPagesHtml(answers, meta, footer);
   }
@@ -157,14 +159,11 @@ function wrapAnswerPagesHtml(answers, meta, footer) {
 
 /**
  * 1 print-page あたりの問題数（HTML 単位の改ページ。カード途中分割はしない）
- * 文章・並び替えは印刷プレビューで「5問／ページ」を前提にレイアウト。めいろ系は大きさのため2問。
- * 助詞・ひらがな・生活などは従来どおり最大6問（印刷CSSの cards-6 で密度調整）。
+ * ※ 通常モードは「1ページ目4問・2ページ目以降5問」（usesFirstFourRestFiveLayout）で chunk するため、
+ *    ここはめいろ系など可変レイアウト向けのフォールバック。
  */
 function getCardsPerPage(content, level) {
   if (content === 'maze' || content === 'maze_hiragana') return 2;
-  /* 文章・並び替えは印刷を5問/ページ基準で組む（上級も5） */
-  if (content === 'sentence') return 5;
-  if (content === 'narabikae') return 5;
   if (content === 'joshi') {
     return level === 'advanced' ? 4 : 6;
   }
@@ -178,20 +177,38 @@ function getCardsPerPage(content, level) {
   return 6;
 }
 
+/** めいろ以外：印刷は1ページ目にヘッダー＋説明で縦を使うため4問、続きページは5問 */
+function usesFirstFourRestFiveLayout(content) {
+  return content !== 'maze' && content !== 'maze_hiragana';
+}
+
 /**
- * スマホ html2canvas→PDF 専用の 1 ページあたり問題数（切れない・見やすさ優先）。
- * PC 印刷の getCardsPerPage とは別。助詞・生活 初級/中級 4、上級 3。ひらがなは 3〜4。
+ * 各ページの問題数の配列（PDF分割・枚数確認と同一仕様）
+ * @returns {number[]} 例: 12問 → [4,5,3]
  */
-function getCardsPerPageForMobilePdf(content, level) {
-  if (content === 'maze' || content === 'maze_hiragana') return 1;
-  if (content === 'sentence' || content === 'narabikae') return 4;
-  if (content === 'joshi' || content === 'seikatsu' || content === 'custom') {
-    return level === 'advanced' ? 3 : 4;
+function getPrintPageChunkSizes(totalCards, content) {
+  const n = Math.max(0, totalCards | 0);
+  if (n === 0) return [];
+  if (!usesFirstFourRestFiveLayout(content)) {
+    const per = 2; /* めいろ・ひらがな迷路のみこの分岐（1ページ2問） */
+    const sizes = [];
+    for (let i = 0; i < n; ) {
+      const sz = Math.min(per, n - i);
+      sizes.push(sz);
+      i += sz;
+    }
+    return sizes;
   }
-  if (content === 'hiragana') {
-    return level === 'beginner' ? 4 : 3;
+  const sizes = [];
+  let remaining = n;
+  sizes.push(Math.min(4, remaining));
+  remaining -= sizes[0];
+  while (remaining > 0) {
+    const sz = Math.min(5, remaining);
+    sizes.push(sz);
+    remaining -= sz;
   }
-  return 4;
+  return sizes;
 }
 
 /** question-card HTML の配列を固定サイズで分割 */
@@ -203,11 +220,28 @@ function chunkCardsForPrint(cardHtmls, perPage) {
   return pages;
 }
 
+/** 1ページ目 first 問・それ以降 rest 問で分割 */
+function chunkCardsFirstPageRest(cardHtmls, first, rest) {
+  if (!cardHtmls.length) return [];
+  const out = [];
+  const n = cardHtmls.length;
+  const firstChunk = cardHtmls.slice(0, Math.min(first, n));
+  out.push(firstChunk);
+  let i = firstChunk.length;
+  while (i < n) {
+    out.push(cardHtmls.slice(i, i + rest));
+    i += rest;
+  }
+  return out;
+}
+
 /**
- * ページごとに print-page でラップ。先頭のみ header+instruction、最終のみ footer
+ * ページごとに print-page でラップ。
+ * - 1ページ目: 通常ヘッダー + 説明
+ * - 2ページ目以降: 続き用の簡易ブロック（問題エリアを広く確保）
  * @param {boolean} putFooterOnLastQuestionPage 解答ページを別途付ける場合は false（フッターは解答側へ）
  */
-function wrapPrintPagesHtml(chunks, header, instr, footer, putFooterOnLastQuestionPage, totalCards) {
+function wrapPrintPagesHtml(chunks, header, instr, continuationStrip, footer, putFooterOnLastQuestionPage, totalCards) {
   if (putFooterOnLastQuestionPage === undefined) putFooterOnLastQuestionPage = true;
   const total = Number.isFinite(totalCards) ? totalCards : 0;
   return chunks
@@ -216,7 +250,7 @@ function wrapPrintPagesHtml(chunks, header, instr, footer, putFooterOnLastQuesti
       const isLast  = i === arr.length - 1;
       const cls = [
         'print-page',
-        isFirst ? 'print-page--first' : '',
+        isFirst ? 'print-page--first' : 'print-page--continuation',
         isLast ? 'print-page--last' : '',
         `print-page--cards-${chunk.length}`,
         total > 0 ? `print-page--total-${total}` : '',
@@ -225,6 +259,7 @@ function wrapPrintPagesHtml(chunks, header, instr, footer, putFooterOnLastQuesti
         .join(' ');
       let html = `<div class="${cls}">`;
       if (isFirst) html += header + instr;
+      else html += continuationStrip;
       html += `<div class="questions-grid">${chunk.join('')}</div>`;
       if (isLast && putFooterOnLastQuestionPage) html += footer;
       html += `</div>`;
@@ -281,7 +316,7 @@ function buildPrintHeader(meta, showName, showDate) {
 }
 
 /* ── 説明文 ── */
-function buildInstruction(meta) {
+function getInstructionText(meta) {
   const instructions = {
     joshi: {
       beginner:     'うすい もじを なぞって かきましょう。',
@@ -324,9 +359,23 @@ function buildInstruction(meta) {
       advanced: 'ことばを ならべて ぶんを つくり、したに かきましょう。',
     },
   };
-  const text = instructions[meta.content][meta.level];
+  return instructions[meta.content][meta.level];
+}
+
+function buildInstruction(meta) {
+  const text = getInstructionText(meta);
   return `<div class="print-instruction">
     <i class="fas fa-info-circle"></i>　${text}
+  </div>`;
+}
+
+/** 2ページ目以降：ヘッダー・説明のかわりに、1行タイトル＋短い説明のみ */
+function buildPrintContinuationStrip(meta) {
+  const text = escapeHtmlPrint(getInstructionText(meta));
+  return `<div class="print-continuation-strip">
+    <div class="print-continuation-kicker">${meta.emoji} ${escapeHtmlPrint(meta.label)} ／ ${meta.badge} ${escapeHtmlPrint(meta.label)}（${escapeHtmlPrint(meta.desc)}）</div>
+    <div class="print-continuation-title">つづき</div>
+    <p class="print-continuation-hint">${text}</p>
   </div>`;
 }
 
@@ -442,7 +491,8 @@ function buildJoshiAdvanced(count, _cw) {
   const answers = data.map((q) => q.answer || '');
   const cards = data.map((q, i) => {
     const inner = `
-      <div class="desc-sentence desc-with-hint"><span class="desc-main">${q.sentence}</span><span class="hint-inline">　ヒント：${q.hint}</span></div>
+      <div class="desc-sentence">${q.sentence}</div>
+      <div class="hint-line">ヒント：${q.hint}</div>
       <div class="answer-line"></div>`;
     return questionCard(i + 1, inner);
   });
@@ -1165,10 +1215,8 @@ function buildSentenceBeginner(count, payload) {
     const correct = qKind === 'who' ? s.who : qKind === 'where' ? s.where : s.action;
     const choices = buildThreeChoices(correct, choicePool);
     const choicesHtml = choices.map((c) => `<span class="choice-item">${c}</span>`).join('');
-    const inner = `<div class="sentence-row-head choice-sentence">
-        <span class="sentence-inline-q">しつもん：${questionText}</span>
-        <span class="sentence-inline-body">${s.sentence}</span>
-      </div>
+    const inner = `<div class="choice-sentence">${s.sentence}</div>
+      <div class="emoji-question-prompt">しつもん：${questionText}</div>
       <div class="choices-row">${choicesHtml}</div>`;
     return questionCard(i + 1, inner);
   });
@@ -1186,10 +1234,8 @@ function buildSentenceIntermediate(count) {
     const qKind = qKinds[i % qKinds.length];
     const questionText =
       qKind === 'who' ? 'だれが？' : qKind === 'where' ? 'どこで？' : 'なにをしている？';
-    const inner = `<div class="sentence-row-head choice-sentence">
-        <span class="sentence-inline-q">しつもん：${questionText}（ことばで かこう）</span>
-        <span class="sentence-inline-body">${s.sentence}</span>
-      </div>
+    const inner = `<div class="choice-sentence">${s.sentence}</div>
+      <div class="emoji-question-prompt">しつもん：${questionText}（ことばで かこう）</div>
       <div class="answer-line"></div>`;
     return questionCard(i + 1, inner);
   });
@@ -1251,10 +1297,8 @@ function buildSentenceAdvanced(count) {
         : qType === 1
           ? `だれが どこで ${s.action}か。`
           : 'どこで なにを していますか。';
-    const inner = `<div class="sentence-row-head choice-sentence">
-        <span class="sentence-inline-q">しつもん：${pattern}</span>
-        <span class="sentence-inline-body">${s.sentence}</span>
-      </div>
+    const inner = `<div class="choice-sentence">${s.sentence}</div>
+      <div class="emoji-question-prompt">しつもん：${pattern}</div>
       <div class="answer-line"></div>`;
     return questionCard(i + 1, inner);
   });
@@ -1297,11 +1341,9 @@ function buildNarabikaeCard(num, level) {
   const made = buildNarabikaeSentence(level);
   const shuffled = shuffle(made.parts);
   const chips = shuffled.map((p) => `<span class="choice-item">${p}</span>`).join('');
-  const inner = `<div class="narabikae-head-row emoji-question-prompt">
-      <span class="narabikae-head-label">ことばを ならべかえて、ただしい ぶんを つくろう</span>
-      <span class="narabikae-head-sub">こたえを したに かこう</span>
-    </div>
+  const inner = `<div class="emoji-question-prompt">ことばを ならべかえて、ただしい ぶんを つくろう</div>
     <div class="choices-row">${chips}</div>
+    <div class="adv-prompt-sub">こたえを したに かこう</div>
     <div class="answer-line"></div>`;
   return { html: questionCard(num, inner), answer: made.answer };
 }

@@ -829,11 +829,16 @@ async function savePdfViaHtml2Canvas() {
     const scale = Math.min(3, Math.max(2.5, dpr * 1.1));
 
     const cards = Array.from(sheet.querySelectorAll('.question-card'));
-    const perPage = getCardsPerPageForMobilePdf(contentSel, levelSel);
+    /* generator.js の getPrintPageChunkSizes と同一：1ページ目4問・以降5問（めいろ系は2問刻み） */
+    const sizes = typeof getPrintPageChunkSizes === 'function'
+      ? getPrintPageChunkSizes(cards.length, contentSel)
+      : [cards.length];
     const pageSlices = [];
-    for (let i = 0; i < cards.length; i += perPage) {
-      pageSlices.push(cards.slice(i, i + perPage));
-    }
+    let offset = 0;
+    sizes.forEach((sz) => {
+      pageSlices.push(cards.slice(offset, offset + sz));
+      offset += sz;
+    });
 
     const host = document.createElement('div');
     host.id = 'pdfTempCaptureHost';
@@ -937,11 +942,12 @@ function addCanvasPageToPdf(pdf, canvas, sideMarginMm, contentWidthMm, addPageBe
 
 /**
  * スマホPDF用：既存プリントから question-card を複製し、186mm 幅の 1 ページ相当 DOM を組み立てる。
- * PC 印刷の .print-page 分割とは独立（getCardsPerPageForMobilePdf に合わせた枚数）。
+ * PC 印刷の getPrintPageChunkSizes（1ページ目4・以降5）に合わせた枚数。
  */
 function buildMobilePdfSheetFragment(sheet, cardSlice, isFirst, isLastPageOfDoc) {
   const header = sheet.querySelector('.print-header');
   const instr = sheet.querySelector('.print-instruction');
+  const continuationStrip = sheet.querySelector('.print-continuation-strip');
   const footer = sheet.querySelector('.print-footer');
   const grid = sheet.querySelector('.questions-grid');
   const cs = getComputedStyle(sheet);
@@ -965,6 +971,8 @@ function buildMobilePdfSheetFragment(sheet, cardSlice, isFirst, isLastPageOfDoc)
   if (isFirst) {
     if (header) wrap.appendChild(header.cloneNode(true));
     if (instr) wrap.appendChild(instr.cloneNode(true));
+  } else if (continuationStrip) {
+    wrap.appendChild(continuationStrip.cloneNode(true));
   }
   const g = document.createElement('div');
   g.className = grid ? grid.className : 'questions-grid';
@@ -980,12 +988,17 @@ function buildMobilePdfSheetFragment(sheet, cardSlice, isFirst, isLastPageOfDoc)
 
 /** 万一 .print-page キャプチャが失敗したとき用（非表示DOM・同じ分割ルール） */
 async function savePdfViaHtml2CanvasFallbackSlices(sheet, contentSel, levelSel) {
+  void levelSel;
   const cards = Array.from(sheet.querySelectorAll('.question-card'));
-  const perPage = getCardsPerPageForMobilePdf(contentSel, levelSel);
+  const sizes = typeof getPrintPageChunkSizes === 'function'
+    ? getPrintPageChunkSizes(cards.length, contentSel)
+    : [cards.length];
   const pageSlices = [];
-  for (let i = 0; i < cards.length; i += perPage) {
-    pageSlices.push(cards.slice(i, i + perPage));
-  }
+  let offset = 0;
+  sizes.forEach((sz) => {
+    pageSlices.push(cards.slice(offset, offset + sz));
+    offset += sz;
+  });
 
   const host = document.createElement('div');
   host.setAttribute('aria-hidden', 'true');

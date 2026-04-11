@@ -957,6 +957,27 @@ body.plan-free .content-btn--custom:not(.active) {
 .desc-sentence { font-size: 1.25rem; font-weight: 600; margin-bottom: 6px; line-height: 1.45; }
 .answer-line { border: none; border-bottom: 2px solid var(--border); height: 36px; width: 100%; background: transparent; display: block; margin-top: 4px; }
 .hiragana-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 6px; margin-top: 4px; }
+/* 50音・初級：5マスを必ず1行に。隙間・マスを詰めて折り返しと印刷縦幅を抑える */
+.hiragana-grid--beginner-compact {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 1px !important;
+  margin-top: 2px !important;
+  width: 100%;
+}
+.hiragana-grid--beginner-compact .hira-cell {
+  gap: 1px !important;
+  min-width: 0;
+}
+.hiragana-grid--beginner-compact .hira-trace {
+  font-size: 1.35rem !important;
+  line-height: 1 !important;
+}
+.hiragana-grid--beginner-compact .hira-write {
+  width: 34px !important;
+  height: 34px !important;
+  border-width: 1.5px !important;
+}
 .hira-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .hira-trace { font-size: 2rem; color: #cce0ff; font-weight: 900; line-height: 1; border-bottom: 2px dashed var(--primary-soft); }
 .hira-write { width: 48px; height: 48px; border: 2px solid var(--border); border-radius: 6px; background: #fafcff; position: relative; }
@@ -981,6 +1002,9 @@ body.plan-free .content-btn--custom:not(.active) {
   font-size: .76rem;
   color: var(--text-sub);
   margin-bottom: 3px;
+}
+.question-card-content .hira-group-label + .hiragana-grid--beginner-compact {
+  margin-top: 1px;
 }
 .trace-second-row { margin-top: 5px; }
 .trace-second-label { font-size: .72rem; color: var(--text-sub); }
@@ -1831,7 +1855,10 @@ body.lp-pricing-page {
   /* 幅だけ狭いビューに追従。パディングは印刷・PDFと同じ 5mm 6mm のまま（キャプチャの一貫性） */
   .a4-sheet { width: 100%; max-width: 186mm; min-height: auto; padding: 5mm 6mm; box-sizing: border-box; }
   .a4-wrapper { padding: 16px 8px; }
-  .hiragana-grid { grid-template-columns: repeat(4,1fr); }
+  /* 50音・初級コンパクトは常に5列。それ以外のひらがなグリッドのみ4列に落とす */
+  .hiragana-grid:not(.hiragana-grid--beginner-compact) {
+    grid-template-columns: repeat(4, 1fr);
+  }
   .steps-grid { flex-direction: column; }
   .how-step-arrow { transform: rotate(90deg); }
   .features-grid { grid-template-columns: repeat(2,1fr); }
@@ -2451,12 +2478,26 @@ body.lp-pricing-page {
   }
 
   /* ── ⑮ ひらがなグリッドを印刷向けサイズに ── */
-  .hiragana-grid {
+  .hiragana-grid:not(.hiragana-grid--beginner-compact) {
     grid-template-columns: repeat(5, 1fr) !important;
     gap: 2.5mm !important;
   }
+  .hiragana-grid--beginner-compact {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 0.35mm !important;
+  }
+  .hiragana-grid--beginner-compact .hira-cell {
+    gap: 0.25mm !important;
+  }
+  .hiragana-grid--beginner-compact .hira-trace {
+    font-size: 12.5pt !important;
+  }
+  .hiragana-grid--beginner-compact .hira-write {
+    width: 8.5mm !important;
+    height: 8.5mm !important;
+  }
   .hira-cell { gap: 1.2mm !important; }
-  .hira-write {
+  .hiragana-grid:not(.hiragana-grid--beginner-compact) .hira-write {
     width: 12mm !important;
     height: 12mm !important;
   }

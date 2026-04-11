@@ -285,9 +285,13 @@ function buildMeta(content, level) {
     intermediate: { label: '中級',  desc: '選択問題',    badge: '🌼' },
     advanced:     { label: '上級',  desc: '記述問題',    badge: '🌟' },
   };
+  const base = { ...contentInfo[content], ...levelInfo[level] };
+  /* 50音・上級は出題を生活単語・初級型に差し替えたため、ヘッダー説明を記述問題にしない */
+  if (content === 'hiragana' && level === 'advanced') {
+    base.desc = '絵つき・なぞり書き（単語）';
+  }
   return {
-    ...contentInfo[content],
-    ...levelInfo[level],
+    ...base,
     content,
     level,
   };
@@ -326,7 +330,8 @@ function getInstructionText(meta) {
     hiragana: {
       beginner:     'うすい もじを なぞって かきましょう。',
       intermediate: 'えに あう ことばを えらびましょう。',
-      advanced:     'えを みて ことばを かきましょう。',
+      /* 上級の中身は生活単語・初級と同じ（絵＋なぞり） */
+      advanced:     'えを みながら もじを なぞって かきましょう。',
     },
     seikatsu: {
       beginner:     'えを みながら もじを なぞって かきましょう。',
@@ -523,7 +528,7 @@ function buildHiraganaBeginner(count, _cw, allowKatakana, kanaMode) {
       </div>`).join('');
     const inner = `
       <div class="hira-group-label">${set.group}</div>
-      <div class="hiragana-grid">${cellsHtml}</div>`;
+      <div class="hiragana-grid hiragana-grid--beginner-compact">${cellsHtml}</div>`;
     return questionCard(i + 1, inner);
   });
   return { cardHtmls: cards, answers };
@@ -553,22 +558,8 @@ function buildHiraganaIntermediate(count, _cw, allowKatakana) {
 }
 
 function buildHiraganaAdvanced(count, _cw, allowKatakana) {
-  const source = allowKatakana
-    ? APP_DATA.hiragana.advanced
-    : filterOutKatakanaHiraganaAdvanced(APP_DATA.hiragana.advanced);
-  const data  = pickRandom(source, count);
-  const answers = data.map((q) => q.answer);
-  const cards = data.map((q, i) => {
-    const boxes = q.answer.split('').map(() =>
-      '<div class="write-box write-box-tight"></div>'
-    ).join('');
-    const inner = `
-      <div class="adv-prompt">${q.prompt}</div>
-      <div class="adv-prompt-sub">（${q.answer.length}もじ）こたえを かきましょう</div>
-      <div class="adv-write-row">${boxes}</div>`;
-    return questionCard(i + 1, inner);
-  });
-  return { cardHtmls: cards, answers };
+  /* 50音・上級：生活単語・初級と同一データ・同一カード構造（絵＋なぞり書き）に差し替え */
+  return buildSeikatsuBeginner(count, _cw, allowKatakana);
 }
 
 /* ====================================================

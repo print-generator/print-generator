@@ -42,13 +42,6 @@ function filterOutKatakanaHiraganaAdvanced(items) {
   );
 }
 
-function getSeikatsuChoicesFromPool(word, pool) {
-  const wrong = (pool || [])
-    .filter((w) => w.word !== word)
-    .map((w) => w.word);
-  return [word, ...pickRandom(wrong, 2)].sort(() => Math.random() - 0.5);
-}
-
 function hiraToKataChar(c) {
   const code = c.charCodeAt(0);
   if (code >= 0x3041 && code <= 0x3096) {
@@ -221,7 +214,7 @@ function getCardsPerPage(content, level) {
     if (level === 'advanced') return 4;
     return 6;
   }
-  if (content === 'seikatsu' || content === 'custom') {
+  if (content === 'custom') {
     return level === 'advanced' ? 4 : 6;
   }
   return 6;
@@ -324,7 +317,6 @@ function buildMeta(content, level) {
   const contentInfo = {
     joshi:    { label: '助詞',   emoji: '📝' },
     hiragana: { label: '50音', emoji: '🔤' },
-    seikatsu: { label: '生活単語', emoji: '🏠' },
     custom:   { label: '好きな単語（なぞり、視写）', emoji: '✏️' },
     maze:     { label: 'めいろ', emoji: '🧩' },
     maze_hiragana: { label: 'ひらがな迷路', emoji: '🧩' },
@@ -337,7 +329,7 @@ function buildMeta(content, level) {
     advanced:     { label: '上級',  desc: '記述問題',    badge: '🌟' },
   };
   const base = { ...contentInfo[content], ...levelInfo[level] };
-  /* 50音・上級は出題を生活単語・初級型に差し替えたため、ヘッダー説明を記述問題にしない */
+  /* 50音・上級は絵つき単語のなぞり書きのため、ヘッダー説明を記述問題にしない */
   if (content === 'hiragana' && level === 'advanced') {
     base.desc = '絵つき・なぞり書き（単語）';
   }
@@ -395,13 +387,7 @@ function getInstructionText(meta) {
     hiragana: {
       beginner:     'うすい もじを なぞり、下の マスに かきましょう。拗音は 大きい もじと 小さい や・ゆ・よ を 分けて かきましょう。',
       intermediate: 'えに あう ことばを えらびましょう。',
-      /* 上級の中身は生活単語・初級と同じ（絵＋なぞり） */
       advanced:     'えを みながら もじを なぞって かきましょう。',
-    },
-    seikatsu: {
-      beginner:     'えを みながら もじを なぞって かきましょう。',
-      intermediate: 'えに あう ことばを えらびましょう。',
-      advanced:     'えを みて ことばを かきましょう。',
     },
     custom: {
       beginner:     'じぶんで いれた ことばを なぞって かきましょう。',
@@ -480,11 +466,6 @@ function buildQuestionBodyStructured(content, level, count, customPayload, allow
       beginner:     buildHiraganaBeginner,
       intermediate: buildHiraganaIntermediate,
       advanced:     buildHiraganaAdvanced,
-    },
-    seikatsu: {
-      beginner:     buildSeikatsuBeginner,
-      intermediate: buildSeikatsuIntermediate,
-      advanced:     buildSeikatsuAdvanced,
     },
     maze: {
       beginner: buildMazeByLevel,
@@ -624,22 +605,14 @@ function buildHiraganaIntermediate(count, _cw, allowKatakana) {
 }
 
 function buildHiraganaAdvanced(count, _cw, allowKatakana) {
-  /* 50音・上級：生活単語・初級と同一データ・同一カード構造（絵＋なぞり書き）に差し替え */
-  return buildSeikatsuBeginner(count, _cw, allowKatakana);
-}
-
-/* ====================================================
-   生活単語
-   ==================================================== */
-
-function buildSeikatsuBeginner(count, _cw, allowKatakana) {
-  const pool = allowKatakana
-    ? APP_DATA.seikatsu.words
-    : filterOutKatakanaWords(APP_DATA.seikatsu.words);
-  const data = pickRandom(pool, count);
+  /* 上級：中級と同じ絵つき単語プールで、なぞり書き（初級型のマス） */
+  const source = allowKatakana
+    ? APP_DATA.hiragana.intermediate
+    : filterOutKatakanaHiraganaIntermediate(APP_DATA.hiragana.intermediate);
+  const data = pickRandom(source, count);
   const answers = data.map((q) => q.word);
   const cards = data.map((q, i) => {
-    const boxes = q.word.split('').map(c =>
+    const boxes = q.word.split('').map((c) =>
       `<div class="seikatsu-char-col">
         <span class="seikatsu-trace">${c}</span>
         <div class="hira-write"></div>
@@ -650,55 +623,6 @@ function buildSeikatsuBeginner(count, _cw, allowKatakana) {
         <span class="emoji-large">${q.emoji}</span>
         <div class="emoji-question-body">
           <div class="emoji-question-prompt">なぞってかこう</div>
-          <div>${boxes}</div>
-        </div>
-      </div>`;
-    return questionCard(i + 1, inner);
-  });
-  return { cardHtmls: cards, answers };
-}
-
-function buildSeikatsuIntermediate(count, _cw, allowKatakana) {
-  const pool = allowKatakana
-    ? APP_DATA.seikatsu.words
-    : filterOutKatakanaWords(APP_DATA.seikatsu.words);
-  const data = pickRandom(pool, count);
-  const answers = data.map((q) => q.word);
-  const cards = data.map((q, i) => {
-    const choices = allowKatakana
-      ? APP_DATA.seikatsu.getChoices(q.word)
-      : getSeikatsuChoicesFromPool(q.word, pool);
-    const choicesHtml = choices.map(c =>
-      `<span class="choice-item">${c}</span>`
-    ).join('');
-    const inner = `
-      <div class="emoji-question-row">
-        <span class="emoji-large">${q.emoji}</span>
-        <div class="emoji-question-body">
-          <div class="emoji-question-prompt">このえは なんという ことばですか？</div>
-          <div class="choices-row">${choicesHtml}</div>
-        </div>
-      </div>`;
-    return questionCard(i + 1, inner);
-  });
-  return { cardHtmls: cards, answers };
-}
-
-function buildSeikatsuAdvanced(count, _cw, allowKatakana) {
-  const pool = allowKatakana
-    ? APP_DATA.seikatsu.words
-    : filterOutKatakanaWords(APP_DATA.seikatsu.words);
-  const data = pickRandom(pool, count);
-  const answers = data.map((q) => q.word);
-  const cards = data.map((q, i) => {
-    const boxes = q.word.split('').map(() =>
-      '<div class="write-box write-box-tight"></div>'
-    ).join('');
-    const inner = `
-      <div class="emoji-question-row">
-        <span class="emoji-large">${q.emoji}</span>
-        <div class="emoji-question-body">
-          <div class="emoji-question-prompt">（${q.word.length}もじ）ことばを かきましょう</div>
           <div>${boxes}</div>
         </div>
       </div>`;

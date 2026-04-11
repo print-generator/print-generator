@@ -2068,9 +2068,67 @@ body.lp-pricing-page {
   .generate-btn { padding: 16px 32px; font-size: 1rem; }
   .preview-controls { flex-direction: column; align-items: stretch; }
   .preview-actions { justify-content: center; }
-  .print-header-main-row { flex-direction: column; align-items: stretch; gap: 10px; }
-  .print-header-fields { max-width: 100%; flex-wrap: wrap; justify-content: flex-start; }
-  .print-header-field--name { max-width: none; }
+  /* プリントヘッダー：タイトル左・名前・日付を同一行・右寄せ（PCレイアウトは @media (max-width: 860px) 以前のまま） */
+  .print-header-main-row {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 6px 8px;
+    flex-wrap: nowrap;
+  }
+  .print-header .print-title-block {
+    flex: 1 1 min(0, 56%);
+    max-width: calc(100% - 10.5rem);
+    min-width: 0;
+  }
+  .print-header .print-title-block .print-title {
+    font-size: clamp(0.92rem, 4vw, 1.2rem);
+    line-height: 1.12;
+    letter-spacing: 0.02em;
+  }
+  .print-header .print-title-block .print-category {
+    font-size: clamp(0.55rem, 2.6vw, 0.65rem);
+    margin-bottom: 2px;
+  }
+  .print-header-fields {
+    flex: 0 0 auto;
+    max-width: min(46%, 10.5rem);
+    min-width: 0;
+    margin-left: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    align-items: flex-end;
+    gap: 4px 5px;
+  }
+  .print-header-field {
+    font-size: 0.62rem;
+    gap: 3px;
+  }
+  .print-header-field--name {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 5.8rem;
+  }
+  .print-field-line--name {
+    min-width: 2.6rem;
+    max-width: 3.6rem;
+    min-height: 18px;
+    height: 18px;
+  }
+  .print-header-field--date {
+    flex: 0 0 auto;
+    gap: 2px;
+  }
+  .print-date-blank--month,
+  .print-date-blank--day {
+    width: 1.3rem;
+    min-width: 1.15rem;
+    height: 18px;
+  }
+  .print-date-suffix {
+    font-size: 0.58rem;
+    padding-bottom: 0;
+  }
   .print-info-block { align-items: flex-start; }
   .features-grid { grid-template-columns: 1fr 1fr; }
   .plan-cards { grid-template-columns: 1fr; }
@@ -2787,7 +2845,7 @@ body.lp-pricing-page {
     max-height: 78mm !important;
   }
 
-  /* ── ⑯ 生活単語カードを印刷向けに ── */
+  /* ── ⑯ 絵付き単語カードを印刷向けに ── */
   .word-card-grid {
     gap: 2.5mm !important;
   }

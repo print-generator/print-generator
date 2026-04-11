@@ -410,9 +410,9 @@ function getInstructionText(meta) {
       advanced:     'ぶんを よみ、しつもんに ぶんで こたえましょう。',
     },
     narabikae: {
-      beginner: 'ことばを ならべて ただしい ぶんに しましょう。',
+      beginner: '3つの ことばを ならべて ただしい ぶんに しましょう。',
       intermediate: '4つの ことばを ならべて ぶんを つくりましょう。',
-      advanced: 'ことばを ならべて ぶんを つくり、したに かきましょう。',
+      advanced: '5つの ことばを ならべて ぶんを つくり、したに かきましょう。',
     },
   };
   return instructions[meta.content][meta.level];
@@ -1292,41 +1292,37 @@ function buildSentenceAdvanced(count) {
   return { cardHtmls: cards, answers };
 }
 
-const NARABIKAE_WHERE = ['こうえんで', 'がっこうで', 'いえで', 'にわで', 'みちで'];
-const NARABIKAE_SUBJECT = ['おとこのこが', 'おんなのこが', 'せんせいが', 'いぬが', 'ねこが', 'とりが', 'おかあさんが', 'おとうさんが'];
-const NARABIKAE_ACTION = ['あそんでいます', 'はしっています', 'ねています', 'たべています', 'よんでいます', 'みています'];
-const NARABIKAE_OBJECT = ['ぼーるで', 'ほんを', 'ごはんを', 'ともだちと', 'ゆっくり', 'たのしく'];
+/** プリントの level → 並び替えジェネレータの difficulty */
+function narabikaeLevelToSortDifficulty(level) {
+  if (level === 'beginner') return 'easy';
+  if (level === 'intermediate') return 'medium';
+  return 'hard';
+}
 
 function buildNarabikaeSentence(level) {
-  const subject = pickOne(NARABIKAE_SUBJECT);
-  const where = pickOne(NARABIKAE_WHERE);
-  const action = pickOne(NARABIKAE_ACTION);
-  if (level === 'beginner') {
-    const parts = [subject, where, action];
-    return { parts, answer: `${subject} ${where} ${action}` };
+  if (typeof generateSortQuestion !== 'function') {
+    const fb = globalThis.SORT_QUESTION_DATA && globalThis.SORT_QUESTION_DATA.fallback
+      ? globalThis.SORT_QUESTION_DATA.fallback
+      : null;
+    const diff = narabikaeLevelToSortDifficulty(level);
+    const pack = fb && fb[diff] ? fb[diff] : { answerParts: ['いぬが', 'にわで', 'はしっています'], answerText: 'いぬが にわで はしっています' };
+    return {
+      questionParts: shuffle(pack.answerParts),
+      answerParts: pack.answerParts,
+      answerText: pack.answerText,
+    };
   }
-  if (level === 'intermediate') {
-    const obj = pickOne(['ぼーるで', 'ほんを', 'ごはんを']);
-    const parts = [subject, where, obj, action];
-    return { parts, answer: `${subject} ${where} ${obj} ${action}` };
-  }
-  const extra = Math.random() < 0.5 ? pickOne(['たのしく', 'ゆっくり']) : pickOne(['ともだちと', 'いっしょに']);
-  const obj = pickOne(NARABIKAE_OBJECT);
-  const parts = Math.random() < 0.5
-    ? [subject, where, obj, action]
-    : [subject, where, extra, obj, action];
-  return { parts, answer: parts.join(' ') };
+  return generateSortQuestion(narabikaeLevelToSortDifficulty(level));
 }
 
 function buildNarabikaeCard(num, level) {
   const made = buildNarabikaeSentence(level);
-  const shuffled = shuffle(made.parts);
-  const chips = shuffled.map((p) => `<span class="choice-item">${p}</span>`).join('');
+  const chips = made.questionParts.map((p) => `<span class="choice-item">${escapeHtmlPrint(p)}</span>`).join('');
   const inner = `<div class="emoji-question-prompt">ことばを ならべかえて、ただしい ぶんを つくろう</div>
     <div class="choices-row">${chips}</div>
     <div class="adv-prompt-sub">こたえを したに かこう</div>
     <div class="answer-line"></div>`;
-  return { html: questionCard(num, inner), answer: made.answer };
+  return { html: questionCard(num, inner), answer: made.answerText };
 }
 
 function buildNarabikaeBeginner(count) {

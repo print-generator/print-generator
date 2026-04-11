@@ -91,23 +91,34 @@ function expandBeginnerCharSlots(charStr, katakana) {
   return [{ ch: s, small: false }];
 }
 
-function buildBeginnerTraceCells(charStr, katakana) {
-  return expandBeginnerCharSlots(charStr, katakana)
-    .map((slot) => {
-      const small = slot.small;
-      const cellCls = small ? 'hira-cell hira-cell--yo-on-small' : 'hira-cell';
-      const traceCls = small ? 'hira-trace hira-trace--small' : 'hira-trace';
-      const writeCls = small ? 'hira-write hira-write--small' : 'hira-write';
-      const chHtml = escapeHtmlPrint(slot.ch);
-      return `<div class="${cellCls}"><div class="${traceCls}">${chHtml}</div><div class="${writeCls}"></div></div>`;
-    })
-    .join('');
+function buildOneBeginnerCell(slot) {
+  const small = slot.small;
+  const cellCls = small ? 'hira-cell hira-cell--yo-on-small' : 'hira-cell';
+  const traceCls = small ? 'hira-trace hira-trace--small' : 'hira-trace';
+  const writeCls = small ? 'hira-write hira-write--small' : 'hira-write';
+  const chHtml = escapeHtmlPrint(slot.ch);
+  return `<div class="${cellCls}"><div class="${traceCls}">${chHtml}</div><div class="${writeCls}"></div></div>`;
 }
 
-function beginnerGridClass(slotCount) {
+/** 拗音は親子を横に密着（.hira-yoon-pair） */
+function buildBeginnerTraceCells(charStr, katakana) {
+  const slots = expandBeginnerCharSlots(charStr, katakana);
+  if (slots.length === 2) {
+    return `<div class="hira-yoon-pair">${buildOneBeginnerCell(slots[0])}${buildOneBeginnerCell(slots[1])}</div>`;
+  }
+  return buildOneBeginnerCell(slots[0]);
+}
+
+/** 1セット＝1グリッド列（拗音ペアも1列） */
+function beginnerGridClass(groupCount) {
   const base = 'hiragana-grid hiragana-grid--beginner-compact';
-  if (slotCount <= 5) return base;
-  return `${base} hiragana-grid--cols-${Math.min(slotCount, 10)}`;
+  if (groupCount <= 5) {
+    if (groupCount === 2) return `${base} hiragana-grid--cols-2`;
+    if (groupCount === 3) return `${base} hiragana-grid--cols-3`;
+    if (groupCount === 4) return `${base} hiragana-grid--cols-4`;
+    return base;
+  }
+  return `${base} hiragana-grid--cols-${Math.min(groupCount, 10)}`;
 }
 
 const LS_LAST_PRINT_SIG = 'homePrint_lastPrintSig';
@@ -158,7 +169,7 @@ function generatePrintHTML(content, level, count, showName, showDate, customPayl
   }
   const { cardHtmls, answers } = result;
   const chunks = usesFirstFourRestFiveLayout(content)
-    ? chunkCardsFirstPageRest(cardHtmls, 4, 5)
+    ? chunkCardsFirstPageRest(cardHtmls, 5, 5)
     : chunkCardsForPrint(cardHtmls, getCardsPerPage(content, level));
   const continuationStrip = buildPrintContinuationStrip(meta);
   const withAnswers = !!includeAnswers && answers.length > 0;
@@ -198,7 +209,7 @@ function wrapAnswerPagesHtml(answers, meta, footer) {
 
 /**
  * 1 print-page あたりの問題数（HTML 単位の改ページ。カード途中分割はしない）
- * ※ 通常モードは「1ページ目4問・2ページ目以降5問」（usesFirstFourRestFiveLayout）で chunk するため、
+ * ※ 通常モードは「各ページ5問」（usesFirstFourRestFiveLayout）で chunk するため、
  *    ここはめいろ系など可変レイアウト向けのフォールバック。
  */
 function getCardsPerPage(content, level) {
@@ -216,14 +227,14 @@ function getCardsPerPage(content, level) {
   return 6;
 }
 
-/** めいろ以外：印刷は1ページ目にヘッダー＋説明で縦を使うため4問、続きページは5問 */
+/** めいろ以外：各印刷ページは5問（ヘッダー・説明・カード高さはCSSで最適化） */
 function usesFirstFourRestFiveLayout(content) {
   return content !== 'maze' && content !== 'maze_hiragana';
 }
 
 /**
  * 各ページの問題数の配列（PDF分割・枚数確認と同一仕様）
- * @returns {number[]} 例: 12問 → [4,5,3]
+ * @returns {number[]} 例: 12問 → [5,5,2]
  */
 function getPrintPageChunkSizes(totalCards, content) {
   const n = Math.max(0, totalCards | 0);
@@ -240,8 +251,6 @@ function getPrintPageChunkSizes(totalCards, content) {
   }
   const sizes = [];
   let remaining = n;
-  sizes.push(Math.min(4, remaining));
-  remaining -= sizes[0];
   while (remaining > 0) {
     const sz = Math.min(5, remaining);
     sizes.push(sz);
@@ -576,17 +585,13 @@ function buildHiraganaBeginner(count, _cw, allowKatakana, kanaMode) {
   const cards = sets.map((set, i) => {
     const katakana =
       mode === 'katakana' || (mode === 'mix' && i % 2 === 1);
-    let slotCount = 0;
+    const groupCount = set.chars.length;
     const cellsHtml = set.chars
-      .map((c) => {
-        const html = buildBeginnerTraceCells(c, katakana);
-        slotCount += expandBeginnerCharSlots(c, katakana).length;
-        return html;
-      })
+      .map((c) => buildBeginnerTraceCells(c, katakana))
       .join('');
     const inner = `
       <div class="hira-group-label">${set.group}</div>
-      <div class="${beginnerGridClass(slotCount)}">${cellsHtml}</div>`;
+      <div class="${beginnerGridClass(groupCount)}">${cellsHtml}</div>`;
     return questionCard(i + 1, inner);
   });
   return { cardHtmls: cards, answers };

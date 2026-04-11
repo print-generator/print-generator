@@ -829,7 +829,7 @@ async function savePdfViaHtml2Canvas() {
     const scale = Math.min(3, Math.max(2.5, dpr * 1.1));
 
     const cards = Array.from(sheet.querySelectorAll('.question-card'));
-    /* generator.js の getPrintPageChunkSizes と同一：1ページ目4問・以降5問（めいろ系は2問刻み） */
+    /* generator.js の getPrintPageChunkSizes と同一：通常は各ページ5問（めいろ系は2問刻み） */
     const sizes = typeof getPrintPageChunkSizes === 'function'
       ? getPrintPageChunkSizes(cards.length, contentSel)
       : [cards.length];
@@ -942,7 +942,7 @@ function addCanvasPageToPdf(pdf, canvas, sideMarginMm, contentWidthMm, addPageBe
 
 /**
  * スマホPDF用：既存プリントから question-card を複製し、186mm 幅の 1 ページ相当 DOM を組み立てる。
- * PC 印刷の getPrintPageChunkSizes（1ページ目4・以降5）に合わせた枚数。
+ * PC 印刷の getPrintPageChunkSizes（各ページ5問）に合わせた枚数。
  */
 function buildMobilePdfSheetFragment(sheet, cardSlice, isFirst, isLastPageOfDoc) {
   const header = sheet.querySelector('.print-header');

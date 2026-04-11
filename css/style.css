@@ -846,7 +846,8 @@ body.plan-free .content-btn--custom:not(.active) {
 }
 .print-title-block {
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 45%;
+  max-width: calc(100% - 9.5rem);
 }
 .print-header-fields {
   display: flex;
@@ -855,7 +856,8 @@ body.plan-free .content-btn--custom:not(.active) {
   justify-content: flex-end;
   gap: 10px 14px;
   flex: 0 1 auto;
-  max-width: min(100%, 52%);
+  max-width: min(100%, 55%);
+  margin-left: auto;
 }
 .print-header-field {
   display: flex;
@@ -1042,6 +1044,15 @@ body.plan-free .content-btn--custom:not(.active) {
   margin-top: 2px !important;
   width: 100%;
 }
+.hiragana-grid--beginner-compact.hiragana-grid--cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+.hiragana-grid--beginner-compact.hiragana-grid--cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+.hiragana-grid--beginner-compact.hiragana-grid--cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
 .hiragana-grid--beginner-compact.hiragana-grid--cols-6 {
   grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
 }
@@ -1083,6 +1094,33 @@ body.plan-free .content-btn--custom:not(.active) {
   border-style: dashed !important;
   border-color: var(--primary-soft) !important;
   background: #f5f9ff !important;
+}
+/* 拗音：「き」＋小「ゃ」を1セットとして横密着（マス同士の隙間なし） */
+.hira-yoon-pair {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.hira-yoon-pair .hira-cell {
+  margin: 0;
+}
+.hira-yoon-pair .hira-cell:first-child .hira-write {
+  border-right-width: 0;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+.hira-yoon-pair .hira-cell--yo-on-small .hira-write {
+  margin-left: -1.5px;
+  border-left-width: 0;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+  position: relative;
+  z-index: 1;
 }
 .hira-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .hira-trace { font-size: 2rem; color: #cce0ff; font-weight: 900; line-height: 1; border-bottom: 2px dashed var(--primary-soft); }
@@ -2213,8 +2251,8 @@ body.lp-pricing-page {
     max-width: 100% !important;
     min-width: 0 !important;
     min-height: 0 !important;
-    /* 用紙余白は @page に任せ、シート内は軽い内側余白のみ（強い詰め込み前のバランスに戻す） */
-    padding: 4mm 5mm !important;
+    /* 用紙余白は @page に任せ、シート内は軽い内側余白（1ページ5問を収めるためやや詰める） */
+    padding: 3.5mm 4.5mm !important;
     margin: 0 auto !important;
     box-shadow: none !important;
     border-radius: 0 !important;
@@ -2247,9 +2285,9 @@ body.lp-pricing-page {
 
   /*
    * ページ別レイアウト（仕様）
-   * - .print-page--first … generator が 1 ページ目にだけフルヘッダー＋説明を出す。問題数は原則4（.print-page--cards-4）。
-   * - .print-page--continuation … 2 ページ目以降は .print-continuation-strip のみで縦を確保し、問題数は原則5（.print-page--cards-5）。
-   * .question-card-content は複数ブロックを左列に回り込ませないためのラッパ（構造上の必須）。
+   * - 通常コンテンツ：各 .print-page は5問（.print-page--cards-5）。1ページ目はフルヘッダー＋説明あり。
+   * - .print-page--continuation … 続きは .print-continuation-strip のみ。
+   * - .question-card-content は複数ブロックを左列に回り込ませないためのラッパ（構造上の必須）。
    */
   .print-continuation-strip {
     -webkit-print-color-adjust: exact !important;
@@ -2300,17 +2338,23 @@ body.lp-pricing-page {
     padding: 1.6pt 3.8pt !important;
     overflow: visible !important;
   }
-  .print-page--first .question-card {
-    margin-bottom: 0.85mm !important;
+  .questions-grid .question-card:not(:last-child) {
+    margin-bottom: 0.45mm !important;
   }
-  .print-page--continuation .question-card {
-    margin-bottom: 0.55mm !important;
+  .print-page--cards-5 .question-card {
+    padding: 1.2pt 3.2pt !important;
+  }
+  .print-page--cards-5 .question-card:not(:last-child) {
+    margin-bottom: 0.4mm !important;
   }
   .question-card-content {
     display: flex !important;
     flex-direction: column !important;
     gap: 1.4mm !important;
     min-width: 0 !important;
+  }
+  .print-page--cards-5 .question-card-content {
+    gap: 1mm !important;
   }
   .maze-svg {
     min-height: 84mm !important;
@@ -2481,12 +2525,24 @@ body.lp-pricing-page {
     border-left: 3pt solid #1a73e8 !important;
     background: #e8f0fe !important;
   }
-  /* 1ページ目のみ：説明ボックスをやや広め（上書きはこの直後に置く） */
+  /* 1ページ目：5問収容のため説明・ヘッダーを詰める */
+  .print-page--first .print-header {
+    margin-bottom: 0.6mm !important;
+    padding-bottom: 0.5mm !important;
+  }
   .print-page--first .print-instruction {
-    padding: 6pt 9pt !important;
-    margin-bottom: 10pt !important;
-    font-size: 8.5pt !important;
-    line-height: 1.35 !important;
+    padding: 3pt 6pt !important;
+    margin-bottom: 2.5pt !important;
+    font-size: 7.6pt !important;
+    line-height: 1.28 !important;
+  }
+  .print-page--first .question-card-content {
+    gap: 0.9mm !important;
+  }
+  .print-page--first .hira-group-label {
+    font-size: 6.9pt !important;
+    margin-bottom: 0.5pt !important;
+    line-height: 1.2 !important;
   }
 
   /* ── ⑧ なぞり書き文字：色を明確に出す ── */
@@ -2620,6 +2676,15 @@ body.lp-pricing-page {
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
     gap: 0.35mm !important;
   }
+  .hiragana-grid--beginner-compact.hiragana-grid--cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .hiragana-grid--beginner-compact.hiragana-grid--cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .hiragana-grid--beginner-compact.hiragana-grid--cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
   .hiragana-grid--beginner-compact.hiragana-grid--cols-6 {
     grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
   }
@@ -2656,6 +2721,13 @@ body.lp-pricing-page {
     height: 5.2mm !important;
     border-style: dashed !important;
     border-color: #8ab4f8 !important;
+  }
+  .hira-yoon-pair .hira-cell:first-child .hira-write {
+    border-right-width: 0 !important;
+  }
+  .hira-yoon-pair .hira-cell--yo-on-small .hira-write {
+    margin-left: -1pt !important;
+    border-left-width: 0 !important;
   }
   .hira-cell { gap: 1.2mm !important; }
   .hiragana-grid:not(.hiragana-grid--beginner-compact) .hira-write {

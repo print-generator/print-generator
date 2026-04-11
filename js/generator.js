@@ -174,7 +174,7 @@ function generatePrintHTML(content, level, count, showName, showDate, customPayl
   const continuationStrip = buildPrintContinuationStrip(meta);
   const withAnswers = !!includeAnswers && answers.length > 0;
 
-  let html = wrapPrintPagesHtml(chunks, header, instr, continuationStrip, footer, !withAnswers, cardHtmls.length);
+  let html = wrapPrintPagesHtml(chunks, header, instr, continuationStrip, footer, !withAnswers, cardHtmls.length, content);
   if (withAnswers) {
     html += wrapAnswerPagesHtml(answers, meta, footer);
   }
@@ -288,10 +288,12 @@ function chunkCardsFirstPageRest(cardHtmls, first, rest) {
  * - 1ページ目: 通常ヘッダー + 説明
  * - 2ページ目以降: 続き用の簡易ブロック（問題エリアを広く確保）
  * @param {boolean} putFooterOnLastQuestionPage 解答ページを別途付ける場合は false（フッターは解答側へ）
+ * @param {string} [content] ジャンル（迷路系のみ .print-page--maze を付与し CSS で分離）
  */
-function wrapPrintPagesHtml(chunks, header, instr, continuationStrip, footer, putFooterOnLastQuestionPage, totalCards) {
+function wrapPrintPagesHtml(chunks, header, instr, continuationStrip, footer, putFooterOnLastQuestionPage, totalCards, content) {
   if (putFooterOnLastQuestionPage === undefined) putFooterOnLastQuestionPage = true;
   const total = Number.isFinite(totalCards) ? totalCards : 0;
+  const isMazeContent = content === 'maze' || content === 'maze_hiragana';
   return chunks
     .map((chunk, i, arr) => {
       const isFirst = i === 0;
@@ -302,6 +304,7 @@ function wrapPrintPagesHtml(chunks, header, instr, continuationStrip, footer, pu
         isLast ? 'print-page--last' : '',
         `print-page--cards-${chunk.length}`,
         total > 0 ? `print-page--total-${total}` : '',
+        isMazeContent ? 'print-page--maze' : '',
       ]
         .filter(Boolean)
         .join(' ');

@@ -832,6 +832,11 @@ body.plan-free .content-btn--custom:not(.active) {
   position: relative;
   display: flex; flex-direction: column;
 }
+/* 迷路・ひらがな迷路：SVG2枚／ページで縦に長い。最小高さ273mmに縛られるとプレビュー下端が欠けるため、内容に合わせて伸ばす */
+.a4-sheet--maze {
+  min-height: auto;
+  overflow: visible;
+}
 .print-header {
   margin-bottom: 10px; padding-bottom: 8px;
   border-bottom: 3px solid var(--primary);
@@ -2733,6 +2738,53 @@ body.lp-pricing-page {
   .hiragana-grid:not(.hiragana-grid--beginner-compact) .hira-write {
     width: 12mm !important;
     height: 12mm !important;
+  }
+
+  /*
+   * 迷路・ひらがな迷路（.print-page--maze / .a4-sheet--maze）専用
+   * 原因: 他ジャンル向けの印刷最適化が迷路にも当たり、次が積み重なって1ページ内に収まらなくなっていた。
+   *  - .a4-sheet の padding 詰め（3.5mm 4.5mm）
+   *  - .print-page--first のヘッダー・説明文の詰め
+   *  - .questions-grid .question-card の間隔の縮小
+   * 迷路は SVG の min-height が大きく2枚／ページのため、上記で縦が不足し印刷・PDF で下端が欠ける。
+   * 対応: 迷路のみシート余白・1ページ目の説明・カード padding を最適化前相当に戻し、SVG はやや低めの min/max に調整。
+   */
+  .a4-sheet--maze {
+    padding: 4mm 5mm !important;
+  }
+  .print-page--maze.print-page--first .print-header {
+    margin-bottom: 1mm !important;
+    padding-bottom: 1mm !important;
+  }
+  .print-page--maze.print-page--first .print-instruction {
+    padding: 6pt 9pt !important;
+    margin-bottom: 10pt !important;
+    font-size: 8.5pt !important;
+    line-height: 1.35 !important;
+  }
+  .print-page--maze.print-page--first .question-card-content {
+    gap: 1.4mm !important;
+  }
+  .print-page--maze .questions-grid .question-card:not(:last-child) {
+    margin-bottom: 0.85mm !important;
+  }
+  .print-page--maze .question-card {
+    padding: 1.6pt 3.8pt !important;
+  }
+  .print-page--maze.print-page--cards-5 .question-card {
+    padding: 1.6pt 3.8pt !important;
+  }
+  .print-page--maze .maze-svg {
+    min-height: 78mm !important;
+    max-height: 86mm !important;
+  }
+  .print-page--maze .maze-card--normal .maze-svg {
+    min-height: 78mm !important;
+    max-height: 88mm !important;
+  }
+  .print-page--maze .maze-card--hiragana .maze-svg {
+    min-height: 68mm !important;
+    max-height: 78mm !important;
   }
 
   /* ── ⑯ 生活単語カードを印刷向けに ── */

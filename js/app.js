@@ -696,6 +696,8 @@ function generatePrint() {
       );
       const sheet = document.getElementById('printSheet');
       sheet.innerHTML = html;
+      /* 迷路系のみ a4-sheet--maze（印刷・プレビュー・PDF で共通レイアウト最適化の影響を切り離す） */
+      sheet.classList.toggle('a4-sheet--maze', content === 'maze' || content === 'maze_hiragana');
 
       const section = document.getElementById('previewSection');
       section.style.display = 'block';

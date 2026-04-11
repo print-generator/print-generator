@@ -71,6 +71,45 @@ function mapBeginnerSetToKatakana(set) {
   };
 }
 
+const SMALL_KANA_HIRA = new Set([...'ぁぃぅぇぉっゃゅょゎゕゖ']);
+const SMALL_KANA_KATA = new Set([...'ァィゥェォッャュョヮヵヶ']);
+
+function isSmallKanaChar(ch, katakana) {
+  return katakana ? SMALL_KANA_KATA.has(ch) : SMALL_KANA_HIRA.has(ch);
+}
+
+/** 拗音など「大文字＋小さいかな」を別マスに分ける */
+function expandBeginnerCharSlots(charStr, katakana) {
+  const s = String(charStr);
+  const parts = [...s];
+  if (parts.length === 2 && isSmallKanaChar(parts[1], katakana)) {
+    return [
+      { ch: parts[0], small: false },
+      { ch: parts[1], small: true },
+    ];
+  }
+  return [{ ch: s, small: false }];
+}
+
+function buildBeginnerTraceCells(charStr, katakana) {
+  return expandBeginnerCharSlots(charStr, katakana)
+    .map((slot) => {
+      const small = slot.small;
+      const cellCls = small ? 'hira-cell hira-cell--yo-on-small' : 'hira-cell';
+      const traceCls = small ? 'hira-trace hira-trace--small' : 'hira-trace';
+      const writeCls = small ? 'hira-write hira-write--small' : 'hira-write';
+      const chHtml = escapeHtmlPrint(slot.ch);
+      return `<div class="${cellCls}"><div class="${traceCls}">${chHtml}</div><div class="${writeCls}"></div></div>`;
+    })
+    .join('');
+}
+
+function beginnerGridClass(slotCount) {
+  const base = 'hiragana-grid hiragana-grid--beginner-compact';
+  if (slotCount <= 5) return base;
+  return `${base} hiragana-grid--cols-${Math.min(slotCount, 10)}`;
+}
+
 const LS_LAST_PRINT_SIG = 'homePrint_lastPrintSig';
 
 function readLastPrintSig() {
@@ -299,22 +338,36 @@ function buildMeta(content, level) {
 
 /* ── プリントヘッダー ── */
 function buildPrintHeader(meta, showName, showDate) {
-  const nameRow = showName ? `<div class="print-info-row">
-    <span class="info-label">なまえ：</span>
-    <span class="info-line"></span>
-  </div>` : '';
-  const dateRow = showDate ? `<div class="print-info-row">
-    <span class="info-label">ひづけ：</span>
-    <span class="info-line"></span>
-  </div>` : '';
+  const nameBlock = showName
+    ? `<div class="print-header-field print-header-field--name">
+        <span class="print-field-label">なまえ</span>
+        <span class="print-field-line print-field-line--name"></span>
+      </div>`
+    : '';
+  const dateBlock = showDate
+    ? `<div class="print-header-field print-header-field--date" aria-label="日付">
+        <span class="print-date-slot">
+          <span class="print-date-blank print-date-blank--month"></span>
+          <span class="print-date-suffix">がつ</span>
+        </span>
+        <span class="print-date-slot">
+          <span class="print-date-blank print-date-blank--day"></span>
+          <span class="print-date-suffix">にち</span>
+        </span>
+      </div>`
+    : '';
+  const fields =
+    showName || showDate
+      ? `<div class="print-header-fields">${nameBlock}${dateBlock}</div>`
+      : '';
 
   return `<div class="print-header">
-    <div class="print-title-block">
-      <div class="print-category">${meta.emoji} ${meta.label} ／ ${meta.badge} ${meta.label}（${meta.desc}）</div>
-      <h1 class="print-title">${meta.label}の れんしゅう</h1>
-    </div>
-    <div class="print-info-block">
-      ${nameRow}${dateRow}
+    <div class="print-header-main-row">
+      <div class="print-title-block">
+        <div class="print-category">${meta.emoji} ${meta.label} ／ ${meta.badge} ${meta.label}（${meta.desc}）</div>
+        <h1 class="print-title">${meta.label}の れんしゅう</h1>
+      </div>
+      ${fields}
     </div>
   </div>`;
 }
@@ -328,7 +381,7 @@ function getInstructionText(meta) {
       advanced:     '（　）に あてはまる ことばを じゆうに かきましょう。',
     },
     hiragana: {
-      beginner:     'うすい もじを なぞって かきましょう。',
+      beginner:     'うすい もじを なぞり、下の マスに かきましょう。拗音は 大きい もじと 小さい や・ゆ・よ を 分けて かきましょう。',
       intermediate: 'えに あう ことばを えらびましょう。',
       /* 上級の中身は生活単語・初級と同じ（絵＋なぞり） */
       advanced:     'えを みながら もじを なぞって かきましょう。',
@@ -521,14 +574,19 @@ function buildHiraganaBeginner(count, _cw, allowKatakana, kanaMode) {
   });
   const answers = sets.map((set) => `${set.group}：${set.chars.join('・')}`);
   const cards = sets.map((set, i) => {
-    const cellsHtml = set.chars.map(c => `
-      <div class="hira-cell">
-        <div class="hira-trace">${c}</div>
-        <div class="hira-write"></div>
-      </div>`).join('');
+    const katakana =
+      mode === 'katakana' || (mode === 'mix' && i % 2 === 1);
+    let slotCount = 0;
+    const cellsHtml = set.chars
+      .map((c) => {
+        const html = buildBeginnerTraceCells(c, katakana);
+        slotCount += expandBeginnerCharSlots(c, katakana).length;
+        return html;
+      })
+      .join('');
     const inner = `
       <div class="hira-group-label">${set.group}</div>
-      <div class="hiragana-grid hiragana-grid--beginner-compact">${cellsHtml}</div>`;
+      <div class="${beginnerGridClass(slotCount)}">${cellsHtml}</div>`;
     return questionCard(i + 1, inner);
   });
   return { cardHtmls: cards, answers };

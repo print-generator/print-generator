@@ -833,14 +833,91 @@ body.plan-free .content-btn--custom:not(.active) {
   display: flex; flex-direction: column;
 }
 .print-header {
-  display: flex; justify-content: space-between; align-items: flex-start;
-  gap: 8px;
   margin-bottom: 10px; padding-bottom: 8px;
   border-bottom: 3px solid var(--primary);
+}
+.print-header-main-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px 16px;
+  width: 100%;
 }
 .print-title-block {
   min-width: 0;
   flex: 1 1 auto;
+}
+.print-header-fields {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 10px 14px;
+  flex: 0 1 auto;
+  max-width: min(100%, 52%);
+}
+.print-header-field {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}
+.print-header-field--name {
+  min-width: 0;
+  flex: 1 1 12rem;
+  max-width: 22rem;
+}
+.print-header-field--date {
+  flex: 0 0 auto;
+  gap: 4px;
+}
+.print-field-label {
+  color: var(--text-sub);
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+.print-field-line {
+  border-bottom: 1.5px solid #999;
+  display: inline-block;
+  vertical-align: bottom;
+  min-height: 22px;
+  height: 22px;
+  box-sizing: border-box;
+}
+.print-field-line--name {
+  flex: 1 1 auto;
+  min-width: 7rem;
+}
+.print-date-slot {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+.print-date-blank {
+  border-bottom: 1.5px solid #999;
+  display: inline-block;
+  vertical-align: bottom;
+  height: 22px;
+  box-sizing: border-box;
+}
+.print-date-blank--month {
+  width: 2.1rem;
+  min-width: 1.75rem;
+}
+.print-date-blank--day {
+  width: 2.1rem;
+  min-width: 1.75rem;
+}
+.print-date-suffix {
+  font-weight: 600;
+  color: var(--text-sub);
+  line-height: 1.2;
+  padding-bottom: 1px;
 }
 /* プリント上部のジャンル行：1行固定（印刷の縦幅節約・レイアウト安定） */
 .print-title-block .print-category {
@@ -965,18 +1042,47 @@ body.plan-free .content-btn--custom:not(.active) {
   margin-top: 2px !important;
   width: 100%;
 }
+.hiragana-grid--beginner-compact.hiragana-grid--cols-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+.hiragana-grid--beginner-compact.hiragana-grid--cols-7 {
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+}
+.hiragana-grid--beginner-compact.hiragana-grid--cols-8 {
+  grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+}
+.hiragana-grid--beginner-compact.hiragana-grid--cols-9 {
+  grid-template-columns: repeat(9, minmax(0, 1fr)) !important;
+}
+.hiragana-grid--beginner-compact.hiragana-grid--cols-10 {
+  grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
+}
 .hiragana-grid--beginner-compact .hira-cell {
   gap: 1px !important;
   min-width: 0;
+}
+.hiragana-grid--beginner-compact .hira-cell--yo-on-small {
+  align-self: end;
 }
 .hiragana-grid--beginner-compact .hira-trace {
   font-size: 1.35rem !important;
   line-height: 1 !important;
 }
+.hiragana-grid--beginner-compact .hira-trace--small {
+  font-size: 0.95rem !important;
+}
 .hiragana-grid--beginner-compact .hira-write {
   width: 34px !important;
   height: 34px !important;
   border-width: 1.5px !important;
+}
+.hiragana-grid--beginner-compact .hira-write--small {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 4px !important;
+  border-style: dashed !important;
+  border-color: var(--primary-soft) !important;
+  background: #f5f9ff !important;
 }
 .hira-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .hira-trace { font-size: 2rem; color: #cce0ff; font-weight: 900; line-height: 1; border-bottom: 2px dashed var(--primary-soft); }
@@ -1919,7 +2025,9 @@ body.lp-pricing-page {
   .generate-btn { padding: 16px 32px; font-size: 1rem; }
   .preview-controls { flex-direction: column; align-items: stretch; }
   .preview-actions { justify-content: center; }
-  .print-header { flex-direction: column; gap: 10px; }
+  .print-header-main-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .print-header-fields { max-width: 100%; flex-wrap: wrap; justify-content: flex-start; }
+  .print-header-field--name { max-width: none; }
   .print-info-block { align-items: flex-start; }
   .features-grid { grid-template-columns: 1fr 1fr; }
   .plan-cards { grid-template-columns: 1fr; }
@@ -2452,6 +2560,32 @@ body.lp-pricing-page {
   .print-info-row {
     gap: 8pt !important;
   }
+  .print-header-fields {
+    gap: 8pt 10pt !important;
+    max-width: 52% !important;
+  }
+  .print-header-field {
+    font-size: 7.5pt !important;
+  }
+  .print-field-line--name {
+    min-height: 6.5mm !important;
+    height: 6.5mm !important;
+    min-width: 28mm !important;
+    border-bottom: 1.5pt solid #999 !important;
+  }
+  .print-date-blank {
+    min-height: 6.5mm !important;
+    height: 6.5mm !important;
+    border-bottom: 1.5pt solid #999 !important;
+  }
+  .print-date-blank--month,
+  .print-date-blank--day {
+    width: 7mm !important;
+    min-width: 6mm !important;
+  }
+  .print-date-suffix {
+    font-size: 7.5pt !important;
+  }
   .info-line {
     width: 52mm !important;
     min-width: 48mm !important;
@@ -2486,15 +2620,42 @@ body.lp-pricing-page {
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
     gap: 0.35mm !important;
   }
+  .hiragana-grid--beginner-compact.hiragana-grid--cols-6 {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+  .hiragana-grid--beginner-compact.hiragana-grid--cols-7 {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  }
+  .hiragana-grid--beginner-compact.hiragana-grid--cols-8 {
+    grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+  }
+  .hiragana-grid--beginner-compact.hiragana-grid--cols-9 {
+    grid-template-columns: repeat(9, minmax(0, 1fr)) !important;
+  }
+  .hiragana-grid--beginner-compact.hiragana-grid--cols-10 {
+    grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
+  }
   .hiragana-grid--beginner-compact .hira-cell {
     gap: 0.25mm !important;
   }
   .hiragana-grid--beginner-compact .hira-trace {
     font-size: 12.5pt !important;
   }
+  .hiragana-grid--beginner-compact .hira-trace--small {
+    color: #aaccff !important;
+    font-size: 9pt !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   .hiragana-grid--beginner-compact .hira-write {
     width: 8.5mm !important;
     height: 8.5mm !important;
+  }
+  .hiragana-grid--beginner-compact .hira-write--small {
+    width: 5.2mm !important;
+    height: 5.2mm !important;
+    border-style: dashed !important;
+    border-color: #8ab4f8 !important;
   }
   .hira-cell { gap: 1.2mm !important; }
   .hiragana-grid:not(.hiragana-grid--beginner-compact) .hira-write {
@@ -2536,7 +2697,8 @@ body.lp-pricing-page {
   print-color-adjust: exact !important;
 }
 .pdf-capturing .trace-target,
-.pdf-capturing .hira-trace {
+.pdf-capturing .hira-trace,
+.pdf-capturing .hira-trace--small {
   /* なぞり文字の薄青をキャンバスでも再現 */
   color: #aaccff !important;
   -webkit-print-color-adjust: exact !important;

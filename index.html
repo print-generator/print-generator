@@ -55,6 +55,9 @@
       <a href="#faq" class="nav-link">FAQ</a>
       <a href="pricing.html" class="nav-link nav-link--sub">説明</a>
       <a href="pricing.html" class="nav-link nav-link--pro">有料版</a>
+      <button type="button" class="nav-btn-history" onclick="openHistoryModal()" title="保存したプリント設定">
+        <i class="fas fa-history"></i> 履歴
+      </button>
       <button type="button" class="nav-btn-premium" onclick="openPlanModal()">
         <i class="fas fa-crown"></i> 機能
       </button>
@@ -638,10 +641,40 @@
   </div>
 </div>
 
+<!-- ===== 履歴・お気に入りモーダル ===== -->
+<div class="modal-overlay no-print" id="historyModal" onclick="closeHistoryModalOutside(event)">
+  <div class="modal-box modal-box--history" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle">
+    <div class="modal-header">
+      <div>
+        <span class="modal-badge"><i class="fas fa-save"></i> PRESETS</span>
+        <h2 class="modal-title" id="historyModalTitle">履歴・お気に入り</h2>
+        <p class="history-modal-lead">生成した設定が自動保存されます。再生成・編集へ戻すで続きから使えます。</p>
+      </div>
+      <button type="button" class="modal-close" onclick="closeHistoryModal()" aria-label="閉じる">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="history-tabs" role="tablist">
+      <button type="button" class="history-tab history-tab--active" role="tab" data-history-tab="history" aria-selected="true" onclick="setHistoryModalTab('history')">
+        履歴
+      </button>
+      <button type="button" class="history-tab" role="tab" data-history-tab="favorites" aria-selected="false" onclick="setHistoryModalTab('favorites')">
+        お気に入り
+      </button>
+    </div>
+    <div class="modal-body history-modal-body" id="historyModalBody"></div>
+    <div class="modal-footer modal-footer--history">
+      <p class="history-modal-footnote" id="historyQuotaNote"></p>
+      <button type="button" class="modal-close-btn" onclick="closeHistoryModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/data/sortQuestionData.js"></script>
 <script src="js/sortQuestionGenerator.js"></script>
 <script src="js/data.js"></script>
 <script src="js/generator.js"></script>
+<script src="js/historyStore.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

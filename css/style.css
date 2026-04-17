@@ -3181,3 +3181,211 @@ body.pdf-mobile-capture .hira-write::after {
     margin: 8px;
   }
 }
+
+/* ============================================
+   履歴モーダル・ヘッダー「履歴」
+   ============================================ */
+.nav-btn-history {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s, transform 0.2s;
+}
+.nav-btn-history:hover {
+  background: rgba(255, 255, 255, 0.28);
+  transform: translateY(-1px);
+}
+.nav-btn-history:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.modal-box--history {
+  max-width: 520px;
+  width: 100%;
+}
+
+.history-modal-lead {
+  font-size: 0.82rem;
+  color: var(--text-sub);
+  font-weight: 500;
+  margin-top: 8px;
+  line-height: 1.5;
+  max-width: 42em;
+}
+
+.history-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.history-tab {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-sub);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.history-tab:hover {
+  color: var(--primary);
+}
+
+.history-tab--active,
+.history-tab[aria-selected='true'] {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.history-modal-body {
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  padding-top: 12px;
+}
+
+.modal-footer--history {
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.history-modal-footnote {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  flex: 1;
+  min-width: 200px;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.history-empty {
+  font-size: 0.9rem;
+  color: var(--text);
+  padding: 12px 4px 8px;
+  line-height: 1.6;
+}
+
+.history-hint {
+  font-size: 0.8rem;
+  color: var(--text-sub);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.history-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 14px 12px;
+  margin-bottom: 12px;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
+.history-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.history-title-input {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 0.88rem;
+}
+
+.history-card-date {
+  font-size: 0.72rem;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.history-card-meta {
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  margin-bottom: 12px;
+}
+
+.history-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.history-card-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.history-card-btn:hover {
+  border-color: var(--primary-soft);
+  background: var(--primary-light);
+}
+
+.history-card-btn--primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.history-card-btn--primary:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.history-card-btn--fav {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+  color: var(--gold-dark);
+}
+
+.history-card-btn--danger {
+  border-color: var(--danger-soft);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .history-card-actions {
+    flex-direction: column;
+  }
+  .history-card-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
